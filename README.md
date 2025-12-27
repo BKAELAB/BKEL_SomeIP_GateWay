@@ -3,6 +3,9 @@
 - Simple Architecture
 <img width="657" height="544" alt="image" src="https://github.com/user-attachments/assets/81cf55b9-4fff-441f-8e92-3153df253ac6" />
 
+## Source Code
+  1. [STM32F103RB F/W](https://github.com/BKAELAB/BKEL_SomeIP_GateWay/tree/mcu) : move to mcu branch
+
 ## Communication Concept
   1. CLIENT accept to Well-Known IP (Ref. DDS)
   2. MCU Send ALL Service ID&Info via Gateway
