@@ -9,8 +9,6 @@
 #include "BKEL_externs.h"
 #include "BKEL_sysconfig.h"
 
-#include "string.h"
-
 ServiceID_t gSid[SERVICE_ID_MAX];
 static uint16_t gIdCnt = 0;
 
