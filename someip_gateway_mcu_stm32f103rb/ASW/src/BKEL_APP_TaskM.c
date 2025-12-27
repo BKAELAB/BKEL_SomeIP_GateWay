@@ -50,7 +50,9 @@ void f_sendPeriodAdvertiseTask(void)
 		 * Period = 5s
 		 */
 
-
+#if USE_FEATURE_TEST	// Test Code Here
+		AppPwmTest();	// For PWM Test Code.
+#endif
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
 	}
 }

@@ -65,5 +65,5 @@ BKEL_SERVICE_STATE_T BKEL_SendServiceID(void* arg)
 	}
 
 	retState = HAL_UART_Transmit(&huart2, (uint8_t*)buffer, len, HAL_MAX_DELAY);
-	return retState == HAL_OK ? (SERVICE_OK) : SERVICE_ERROR;
+	return (HAL_StatusTypeDef)retState == HAL_OK ? (BKEL_SERVICE_STATE_T)SERVICE_OK : (BKEL_SERVICE_STATE_T)SERVICE_ERROR;
 }

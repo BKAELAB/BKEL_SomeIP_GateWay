@@ -13,8 +13,10 @@ extern "C" {
 #include <BKEL_externs.h>
 #include <BKEL_typedef.h>
 #include <BKEL_sysinit.h>
+
 #include <BKEL_APP_TaskM.h>
 #include <BKEL_APP_service.h>
+#include <BKEL_APP_pwm.h>
 
 #include <BKEL_BSW_gpio.h>
 #include <BKEL_BSW_adc.h>

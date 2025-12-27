@@ -6,6 +6,24 @@
  */
 #include "main.h"
 
+/* DEFINES For PWM & TIMER */
+/* TIMER & CLK*/
+#define	TIM_PSC_VALUE_72	(72U - 1U)
+#define PWM_ARR_VALUE_1KHZ 	(1000U - 1U)
+/* PIN */
+#define PIN_PWM_OUT				(0U)	/* GPIOx PIN0 : PWM OUT 			*/
+#define PIN_PWM_IN 				(6U)	/* GPIOx PIN6 : PWM IN  			*/
+/* GPIO ALT MUX */
+#define BIT_CLEAR 				(0xF)	/* 4-bit BIT CLEAR ~(BIT_CLEAR) 	*/
+#define ALT_INPUT_FLOATING 		(0x4)	/* 4-bit ALT INPUT FLOATING 0b0010  */
+#define ALT_PUSH_PULL 			(0xB)	/* 4-bit ALT PUSH PULL 0b1011		*/
+/* SET VALUES */
+#define PWM_MODE_1				(6U)	/* PWM MODE 1 (In OC1M , set 110)	*/
+#define PWM_DUTY_PERCENT_0		(0U)	/* DUTY 0% 						*/
+#define PWM_DUTY_PERCENT_50		(0.5)	/* DUTY 50% 						*/
+#define PWM_DUTY_PERCENT_100	(1.0)	/* DUTY 100% 						*/
+
+
 ADC_HandleTypeDef hadc1;
 UART_HandleTypeDef huart2;
 
@@ -13,6 +31,9 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
+
+// 25.12.27 SJKANG
+static void BKEL_PWM_Init(void);
 
 #ifdef USE_UART_DEBUG
 int _write(int file, char *ptr, int len)
@@ -31,6 +52,7 @@ void system_init(void)
 	MX_GPIO_Init();
 	MX_USART2_UART_Init();
 	MX_ADC1_Init();
+	BKEL_PWM_Init();
 }
 
 
@@ -78,6 +100,8 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
+
 }
 
 /**
@@ -172,4 +196,70 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
+}
+
+
+
+static void BKEL_PWM_Init(void)
+{
+	/* TIM2 / TIM3 Clock Enable */
+
+	RCC->APB1ENR |= (RCC_APB1ENR_TIM2EN | RCC_APB1ENR_TIM3EN);
+	/* pin map */
+	/* PA0 : TIM2_1 PWM_OUT */
+	GPIOA->CRL &= ~(BIT_CLEAR << (PIN_PWM_OUT * 4));
+	GPIOA->CRL |= (ALT_PUSH_PULL << (PIN_PWM_OUT * 4));
+	/* PA6 : TIM3_1 PWM_IN */
+	GPIOA->CRL &= ~(BIT_CLEAR << (PIN_PWM_IN * 4));
+	GPIOA->CRL |= (ALT_INPUT_FLOATING << (PIN_PWM_IN * 4));
+
+	TIM2->CR1 = BKEL_U_CLR;		// TIM2 Disable
+	TIM3->CR1 = BKEL_U_CLR; 	// TIM3 Disable
+
+	/* PWM OUT Setting */
+	// 1. config Prescaler & ARR
+	TIM2->PSC = TIM_PSC_VALUE_72;		// 1MHz (72MHz / 72)
+	TIM2->ARR = PWM_ARR_VALUE_1KHZ;		// 1kHz PWM
+
+	// 2. set PWM MODE
+	TIM2->CCMR1 &= ~TIM_CCMR1_OC1M;
+	TIM2->CCMR1 |= (PWM_MODE_1 << TIM_CCMR1_OC1M_Pos);	// PWM MODE 1
+	TIM2->CCMR1 |= TIM_CCMR1_OC1PE;						// preload enable
+
+	// 3. set Duty value
+	TIM2->CCR1 = PWM_ARR_VALUE_1KHZ * PWM_DUTY_PERCENT_50 + 0.5f; 	// 50%
+
+	// 4. Enable Output
+	TIM2->CCER |= TIM_CCER_CC1E;
+
+	// 5. Update Event
+	TIM2->EGR  |= TIM_EGR_UG;
+
+	// 6. Counter Enable
+	TIM2->CR1  |= BKEL_U_SET;	// TIM2 Enable
+
+	/* PWM IN Setting */
+	// 1. config Prescaler & ARR
+	TIM3->PSC = TIM_PSC_VALUE_72;
+	TIM3->ARR = 0xFFFF;			// MAX VALUE
+
+	// 2. Input Capture Mapping
+	TIM3->CCMR1 &= ~TIM_CCMR1_CC1S;
+	TIM3->CCMR1 |= TIM_CCMR1_CC1S_0;	// CH1 <- TI1 (Period)
+	TIM3->CCMR1 |= TIM_CCMR1_CC2S_1;	// CH2 <- TI1 (Thigh)
+
+	// 3. Select Edge & Slave mode
+	TIM3->CCER &= ~TIM_CCER_CC1P;		// CH1: Rising edge
+	TIM3->CCER |= TIM_CCER_CC2P;		// CH2: Falling Edge
+
+	TIM3->SMCR &= ~TIM_SMCR_TS;
+	TIM3->SMCR |= TIM_SMCR_TS_2 | TIM_SMCR_TS_0;
+	TIM3->SMCR &= ~TIM_SMCR_SMS;
+	TIM3->SMCR |= TIM_SMCR_SMS_2;
+
+	// 4. Capture Enable
+	TIM3->CCER |= TIM_CCER_CC1E | TIM_CCER_CC2E;
+
+	// 5. Counter Enable
+	TIM3->CR1 |= TIM_CR1_CEN;
 }
