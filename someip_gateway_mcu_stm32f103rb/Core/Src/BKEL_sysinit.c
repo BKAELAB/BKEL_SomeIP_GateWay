@@ -8,21 +8,33 @@
 
 /* DEFINES For CLOCK */
 /* FLASH 설정 */
-#define FLASH_LATENCY_2WS         (0x2U)        // Two wait states, if 48 MHz < SYSCLK <= 72 MHz
+#define FLASH_ACR_PRFTBE_EN         (1U << 4)       // Prefetch buffer enable
+#define FLASH_LATENCY_2WS           (0x2U) 			// Two wait states, if 48 MHz < SYSCLK <= 72 MHz
+
+/* RCC CR 비트*/
+#define RCC_CR_HSEON_EN         	(1U << 16)   // HSE ON
+#define RCC_CR_HSERDY_FLAG      	(1U << 17)   // HSE ready
+#define RCC_CR_PLLON_EN         	(1U << 24)   // PLL enable
+#define RCC_CR_PLLRDY_FLAG      	(1U << 25)   // PLL ready
 
 /* RCC CFGR 비트 */
-#define RCC_CFGR_PLLSRC_HSE       (1U << 16)
-#define RCC_CFGR_PLLMUL9          (7U << 18)    // PLL x9 (7 = 9 - 2)
+#define RCC_CFGR_PLLSRC_HSE       	(1U << 16)
+#define RCC_CFGR_PLLMUL9          	(7U << 18)     // PLL x9 (7 = 9 - 2)
+#define RCC_CFGR_HPRE_DIV1_VAL      (0x0U << 4)    // AHB Prescaler = /1
+#define RCC_CFGR_PPRE1_DIV2_VAL     (0x4U << 8)    // APB1 Prescaler = /2
+#define RCC_CFGR_PPRE2_DIV1_VAL     (0x0U << 11)   // APB2 Prescaler = /1
+#define RCC_CFGR_SW_PLL_VAL         (0x2U << 0)    // SYSCLK = PLL
+#define RCC_CFGR_SWS_PLL_STATUS     (0x2U << 2)    // SYSCLK status = PLL
 
 /* BIT CLEAR */
-#define FLASH_LATENCY_CLEAR		  (0x7 << 0)	// 3-bit clear
-#define RCC_CFGR_PLLSRC_CLEAR     (1U << 16)
-#define RCC_CFGR_PLLMUL_CLEAR     (0xFU << 18)
-#define RCC_CFGR_HPRE_CLEAR       (0xFU << 4)
-#define RCC_CFGR_PPRE1_CLEAR      (0x7U << 8)
-#define RCC_CFGR_PPRE2_CLEAR      (0x7U << 11)
-#define RCC_CFGR_SW_CLEAR         (0x3U << 0)
-#define RCC_CFGR_SWS_CLEAR        (0x3U << 2)
+#define FLASH_LATENCY_CLEAR		  	(0x7 << 0)	   // 3-bit clear
+#define RCC_CFGR_PLLSRC_CLEAR     	(1U << 16)
+#define RCC_CFGR_PLLMUL_CLEAR     	(0xFU << 18)
+#define RCC_CFGR_HPRE_CLEAR       	(0xFU << 4)
+#define RCC_CFGR_PPRE1_CLEAR      	(0x7U << 8)
+#define RCC_CFGR_PPRE2_CLEAR      	(0x7U << 11)
+#define RCC_CFGR_SW_CLEAR         	(0x3U << 0)
+#define RCC_CFGR_SWS_CLEAR        	(0x3U << 2)
 
 
 /* DEFINES For PWM & TIMER */
@@ -88,13 +100,13 @@ void system_init(void)
 static void BKEL_CLK_Init(void)
 {
 	// FLASH Latency 설정 (72MHz를 위해 2 Wait State 필수)
-	FLASH->ACR |= (FLASH_ACR_PRFTBE);				// // Prefetch buffer enable
-	FLASH->ACR &= ~(FLASH_LATENCY_CLEAR);           // Latency 비트 초기화
-	FLASH->ACR |= (FLASH_LATENCY_2WS);              // 2 Wait States
-												    // MCU가 플래시 메모리로부터 명령어 또는 데이터를 읽을 때, 2클럭만큼 기다린 뒤 값을 사용
+	FLASH->ACR |= (FLASH_ACR_PRFTBE_EN);				// Prefetch buffer enable
+	FLASH->ACR &= ~(FLASH_LATENCY_CLEAR);          	    // Latency 비트 초기화
+	FLASH->ACR |= (FLASH_LATENCY_2WS);              	// 2 Wait States
+												    	// MCU가 플래시 메모리로부터 명령어 또는 데이터를 읽을 때, 2클럭만큼 기다린 뒤 값을 사용
 
-	RCC->CR |= (RCC_CR_HSEON);  					// HSEON (HSE Clock enable)
-	while (!(RCC->CR & (RCC_CR_HSERDY)));    		// HSE 오실레이터가 안정되었음을 나타내기 위해 하드웨어에 의해 설정
+	RCC->CR |= (RCC_CR_HSEON_EN);  					// HSEON (HSE Clock enable)
+	while (!(RCC->CR & (RCC_CR_HSERDY_FLAG)));    	// HSE 오실레이터가 안정되었음을 나타내기 위해 하드웨어에 의해 설정
 	    											// Oscillator(오실레이터): 주기적인 신호(사인파, 사각파)를 생성하는 장치
 
 	// PLL 설정,  72 MHz maximum frequency (datasheet 1p)
@@ -108,21 +120,21 @@ static void BKEL_CLK_Init(void)
 
 	// PPRE1 (APB Low-speed prescaler (APB1))
     RCC->CFGR &= ~(RCC_CFGR_PPRE1_CLEAR);           // PPRE1 초기화
-    RCC->CFGR |= (RCC_CFGR_PPRE1_DIV2);             // HCLK divided by 2
+    RCC->CFGR |= (RCC_CFGR_PPRE1_DIV2_VAL);         // HCLK divided by 2
 
     // PPRE2 (APB high-speed prescaler (APB2)
     RCC->CFGR &= ~(RCC_CFGR_PPRE2_CLEAR);    		// PPRE2 초기화
-    RCC->CFGR |= (RCC_CFGR_PPRE2_DIV1);				// HCLK not divided
+    RCC->CFGR |= (RCC_CFGR_PPRE2_DIV1_VAL);			// HCLK not divided
 
     // PLL 활성화
-    RCC->CR |= (RCC_CR_PLLON);               		// PLLON
-    while (!(RCC->CR & (RCC_CR_PLLRDY)));    		// PLLRDY
+    RCC->CR |= (RCC_CR_PLLON_EN);               	// PLLON
+    while (!(RCC->CR & (RCC_CR_PLLRDY_FLAG)));    	// PLLRDY
 
     // SW (System clock Switch)
     // HSE는 PLL의 입력 클럭 역할, PLL은 실제로 시스템 전체를 구동하는 SYSCLK을 제공
     RCC->CFGR &= ~(RCC_CFGR_SW_CLEAR);           								// SW 초기화
-    RCC->CFGR |= (RCC_CFGR_SW_PLL);            									// PLL selected as system clock
-    while ((RCC->CFGR & (RCC_CFGR_SWS_CLEAR)) != (RCC_CFGR_SWS_PLL));			// 시스템 클럭이 실제로 PLL로 바뀌었는지 확인
+    RCC->CFGR |= (RCC_CFGR_SW_PLL_VAL);            								// PLL selected as system clock
+    while ((RCC->CFGR & (RCC_CFGR_SWS_CLEAR)) != (RCC_CFGR_SWS_PLL_STATUS));	// 시스템 클럭이 실제로 PLL로 바뀌었는지 확인
 }
 
 /**
