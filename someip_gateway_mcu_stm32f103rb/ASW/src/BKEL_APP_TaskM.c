@@ -53,9 +53,9 @@ void f_sendPeriodAdvertiseTask(void)
 #if USE_FEATURE_TEST	// Test Code Here
 		AppPwmTest();	// For PWM Test Code.
 
-		GPIOA->BSRR |= (1U << 5);
-		GPIOC->BSRR |= (1U << 1);
-		//uint16_t PC0_VALUE = ~(GPIOC->IDR) & 1);
+		/* GPIO DI/DO Test */
+		GPIOA->BSRR = (1U << 5);
+		GPIOC->BSRR = (1U << 1);
 		uint8_t pc0_val = (GPIOC->IDR & 1) == 1 ? 1 : 0;
 		uint16_t PC1_VALUE = (GPIOC->IDR & (1 << 1)) ? 1 : 0;
 #endif
