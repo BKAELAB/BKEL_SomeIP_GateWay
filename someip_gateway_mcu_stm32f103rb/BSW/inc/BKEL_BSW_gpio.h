@@ -23,6 +23,7 @@ typedef struct BKEL_GPIO {
 
 // Functions Prototype
 BKEL_GPIO_STATE_T BKEL_read_pin(BKEL_gpio_pin * gpiopin);
-
+void BKEL_write_pin(BKEL_gpio_pin * gpiopin, BKEL_GPIO_STATE_T pinstate);
+void BKEL_toggle_pin(BKEL_gpio_pin * gpiopin);
 
 #endif	// BSW_INC_BKEL_GPIO_H

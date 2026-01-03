@@ -40,6 +40,9 @@ void f_inittask(void)
 	}
 }
 
+BKEL_gpio_pin led;
+BKEL_GPIO_STATE_T test;
+
 /* TASK Implementation */
 void f_sendPeriodAdvertiseTask(void)
 {
@@ -54,10 +57,18 @@ void f_sendPeriodAdvertiseTask(void)
 		AppPwmTest();	// For PWM Test Code.
 
 		/* GPIO DI/DO Test */
-		GPIOA->BSRR = (1U << 5);
-		GPIOC->BSRR = (1U << 1);
-		uint8_t pc0_val = (GPIOC->IDR & 1) == 1 ? 1 : 0;
-		uint16_t PC1_VALUE = (GPIOC->IDR & (1 << 1)) ? 1 : 0;
+//		GPIOA->BSRR = (1U << 5);
+//		GPIOC->BSRR = (1U << 1);
+//		uint8_t pc0_val = (GPIOC->IDR & 1) == 1 ? 1 : 0;
+//		uint16_t PC1_VALUE = (GPIOC->IDR & (1 << 1)) ? 1 : 0;
+
+		/* GPIO_read/write/toggle Test */
+		led.Pin_Channel = GPIOA;
+		led.Pin_Number = (1U << 5);
+		test = BKEL_read_pin(&led);
+		BKEL_write_pin(&led, BKEL_GPIO_U_RESET);
+		test = BKEL_read_pin(&led);
+		BKEL_toggle_pin(&led);
 #endif
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
 	}
