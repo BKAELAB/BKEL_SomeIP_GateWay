@@ -46,10 +46,11 @@
 #define PIN_PWM_IN 				(6U)	/* GPIOx PIN6 : PWM IN  			*/
 /* GPIO ALT MUX */
 #define BIT_CLEAR 				(0xF)	/* 4-bit BIT CLEAR ~(BIT_CLEAR) 	*/
-#define ALT_INPUT_FLOATING 		(0x4)	/* 4-bit ALT INPUT FLOATING 0b0010  */
+#define ALT_INPUT_FLOATING 		(0x4)	/* 4-bit ALT INPUT FLOATING 0b0100  */
 #define ALT_PUSH_PULL 			(0xB)	/* 4-bit ALT PUSH PULL 0b1011		*/
 #define BKEL_INPUT_PULL			(0x8)	/* 4-bit PULL-UP/DOWN INPUT 0b1000	*/
 #define BKEL_OUTPUT_PULL		(0x1)	/* 4-bit PULL-UP/DOWN OUTPUT 0b0001	*/
+
 /* SET VALUES */
 #define PWM_MODE_1				(6U)	/* PWM MODE 1 (In OC1M , set 110)	*/
 #define PWM_DUTY_PERCENT_0		(0U)	/* DUTY 0% 						*/
@@ -57,6 +58,7 @@
 #define PWM_DUTY_PERCENT_100	(1.0)	/* DUTY 100% 						*/
 /* GPIO PORT */
 #define GPIOC_RESET				(1U << 4)	/* GPIOC RESET 	*/
+#define GPIOB_RESET				(1U << 3)	/* GPIOB RESET	*/
 #define GPIOA_RESET				(1U << 2)	/* GPIOA RESET 	*/
 #define AFIO_RESET				(1U)		/* AFIO RESET	*/
 /* GPIO PIN */
@@ -65,6 +67,14 @@
 #define GPIO_PIN_OUTPUT			(1U)		/* GPIOC PIN1: OUTPUT */
 #define GPIO_PIN_B1				(13U-8U)	/* GPIOC PIN13: BTN1 */
 #define EXTI_PIN13				(1U)		/* EXTI13 [7:4] */
+
+#define GPIO_PIN_NSS			(12U-8U)	/* GPIOB PIN12: OUTPUT */
+#define GPIO_PIN_SCK			(13U-8U)	/* GPIOB PIN13: OUTPUT */
+#define GPIO_PIN_MISO			(14U-8U)	/* GPIOB PIN14: INPUT */
+#define GPIO_PIN_MOSI			(15U-8U)	/* GPIOB PIN15: OUTPUT */
+
+/* SPI CR(Control Register) */
+//#define SPI_CR1_BIDI				(1U << 15)	/* BIDIMODE: 1-line unidirectional mode */
 
 ADC_HandleTypeDef hadc1;
 UART_HandleTypeDef huart2;
@@ -83,6 +93,9 @@ static void BKEL_PWM_Init(void);
 // 25.12.28 DHKWON
 static void BKEL_GPIO_Init(void);
 
+// 26.01.02 DHKWON
+static void BKEL_SPI_Init(void);
+
 #ifdef USE_UART_DEBUG
 int _write(int file, char *ptr, int len)
 {
@@ -97,11 +110,13 @@ void system_init(void)
 {
 	HAL_Init();
 	// SystemClock_Config();
-	BKEL_CLK_Init();
+	BKEL_CLK_Init();			// 하드웨어 72MHz로 변경
+	SystemCoreClockUpdate();	// BKEL_CLK_Init()으로 인한
 	BKEL_GPIO_Init();
 	MX_USART2_UART_Init();
 //	MX_ADC1_Init();
 	BKEL_PWM_Init();
+	BKEL_SPI_Init();
 }
 
 
@@ -217,8 +232,9 @@ static void MX_USART2_UART_Init(void)
 
 static void BKEL_GPIO_Init(void)
 {
-	RCC->APB2ENR &= ~(0xff << 4);
-	RCC->APB2ENR = (GPIOA_RESET | GPIOC_RESET | AFIO_RESET);
+
+	RCC->APB2ENR &= ~((1U << 4) | (1U << 2) | (1U << 0));
+	RCC->APB2ENR |= (GPIOC_RESET | GPIOA_RESET | AFIO_RESET);
 
 	/* PIN MAP */
 	/* PA5: GPIO_PIN_LD2 */
@@ -246,6 +262,93 @@ static void BKEL_GPIO_Init(void)
 
 	NVIC_SetPriority(EXTI15_10_IRQn, 5);
 	NVIC_EnableIRQ(EXTI15_10_IRQn);
+}
+
+static void BKEL_SPI_Init(){
+	/* SPI Enable */
+	RCC->APB1ENR &= ~(1U << 14);
+	RCC->APB1ENR |= RCC_APB1ENR_SPI2EN;	// stm32f103xb.h 에 선언되어 있음
+
+	/* PIN MAP */
+	/* GPIO Enable */
+	RCC->APB2ENR &= ~(1U << 3);
+	RCC->APB2ENR |= GPIOB_RESET;
+
+	/* PB12: GPIO_PIN_NSS */
+	GPIOB->CRH &= ~(BIT_CLEAR << (GPIO_PIN_NSS * 4));
+	GPIOB->CRH |= (ALT_PUSH_PULL << (GPIO_PIN_NSS * 4));
+	/* PB13: GPIO_PIN_SCK */
+	/* General Purpos Push-Pull: CPU가 핀 상태 결정 */
+	/* Alternate Function Push-Pull: 핀 제어 SPI 하드웨어 모듈에 넘김 */
+	GPIOB->CRH &= ~(BIT_CLEAR << (GPIO_PIN_SCK * 4));
+	GPIOB->CRH |= (ALT_PUSH_PULL << (GPIO_PIN_SCK * 4));
+	/* PB14: GPIO_PIN_MISO */
+	GPIOB->CRH &= ~(BIT_CLEAR << (GPIO_PIN_MISO * 4));
+	GPIOB->CRH |= (ALT_INPUT_FLOATING << (GPIO_PIN_MISO * 4));
+	/* PB15: GPIO_PIN_MOSI */
+	GPIOB->CRH &= ~(BIT_CLEAR << (GPIO_PIN_MOSI * 4));
+	GPIOB->CRH |= (ALT_PUSH_PULL << (GPIO_PIN_MOSI * 4));
+
+	/* SPI2 Disable */
+	/* note: This bit should be written only when SPI is disabled (SPE = ‘0’) for correct operation */
+	SPI2->CR1 &= ~(SPI_CR1_SPE);
+
+	/* Bit 15 BIDIMODE: Bidirectional data mode enable
+	 * 0: 2-line unidirectional data mode -> 2라인 단방향(전이중 - MOSI, MISO)
+	 * 1: 1-line bidirectional data mode  -> 1라인 양방향(반이중)
+	 */
+	/* Clear & Bidimode select(0) */
+
+
+	//SPI2->CR1 &= ~(SPI_CR1_MSTR | SPI_CR1_SSI | SPI_CR1_SSM | SPI_CR1_BIDIMODE | SPI_CR1_CPOL );
+	SPI2->CR1 = 0;
+
+	/* Master Mode - MSTR(Master Selection) */
+	/* SPI_CR1_SSI(Internal Slave Select):  SLAVE로 오작동 하지 않도록 같이 SET) */
+	/* SPI_CR1_SSM(Software Slave Management): SSM=1로 SET하여 레지스터 값 보도록 */
+	/* SSM SSI 같이 설정 필요*/
+	SPI2->CR1 |= (SPI_CR1_MSTR |  // Master Mode 0: Slave configuration, 1: Master configuration
+	              SPI_CR1_SSM  |  // Software Slave Management
+	              SPI_CR1_SSI);   // Internal Slave Select (Master 유지용)
+
+	/* Data Format - DFF(Data Frame Format) */
+	// DataSize = 8BIT(DFF=0)
+	SPI2->CR1 &= ~(SPI_CR1_DFF);
+
+	/* FirstBit = MSB */
+	SPI2->CR1 &= ~(SPI_CR1_LSBFIRST); // 0: MSB transmitted first
+
+	/* CLKPolarity(Polarity = LOW) */
+	SPI2->CR1 &= ~(SPI_CR1_CPOL);	// CPOL=0
+
+	/* CLKPhase */
+	SPI2->CR1 &= ~(SPI_CR1_CPHA); 	// CPHA=0
+	/* BaudRatePrescaler (BaudRatePrescaler = 2) */
+	// BR[2:0] Bit: 000 -> fPCLK/2 36MHz/2 = 18MHz
+	SPI2->CR1 &= ~(0x7U << 3);
+
+	/* SPI2 Enable SPE(SPI Enable)*/
+	SPI2->CR1 |= SPI_CR1_SPE; // SPE=1(SET)
+
+}
+
+uint8_t BKEL_SPI2_Transfer(uint8_t data) {
+	uint32_t timeout = 10000;
+	/* 송신 버퍼가 비어있는지 확인 (TXE) */
+	while (!(SPI2->SR & SPI_SR_TXE)) {
+		if (--timeout == 0) return 0; // 송신 실패 시 탈출
+	}
+	/* 데이터를 데이터 레지스터(DR)에 씀 (전송 시작) */
+	SPI2->DR = data;
+	timeout = 10000; // 타임아웃 초기화
+
+	/* 수신 버퍼에 데이터가 들어왔는지 확인 (RXNE) */
+	while (!(SPI2->SR & SPI_SR_RXNE)) {
+		if (--timeout == 0) return 0; // 수신 실패 시 탈출
+	}
+	/* 수신된 데이터 리턴 */
+	//데이터를 쓸 때, 읽을 때 둘 다 SPI2->DR 사용
+	return (uint8_t)SPI2->DR;
 }
 
 

@@ -6,10 +6,14 @@
  */
 
 #include "main.h"
+#include <stdio.h>
 
 /* Defines */
 #define QUEUE_LENGTH 10
 #define ITEM_SIZE    sizeof(ServiceID_t)
+
+/* Exturn */
+extern uint8_t BKEL_SPI2_Transfer(uint8_t data);
 
 /* LOCAL VARS */
 static StaticQueue_t xQueueBuffer;
@@ -43,6 +47,8 @@ void f_inittask(void)
 /* TASK Implementation */
 void f_sendPeriodAdvertiseTask(void)
 {
+	static uint32_t transfer_count = 0;
+	static char uart_buf[100];
 	for (;;)
 	{
 		/* TO DO
@@ -51,13 +57,30 @@ void f_sendPeriodAdvertiseTask(void)
 		 */
 
 #if USE_FEATURE_TEST	// Test Code Here
-		AppPwmTest();	// For PWM Test Code.
+//		AppPwmTest();	// For PWM Test Code.
 
 		/* GPIO DI/DO Test */
-		GPIOA->BSRR = (1U << 5);
-		GPIOC->BSRR = (1U << 1);
-		uint8_t pc0_val = (GPIOC->IDR & 1) == 1 ? 1 : 0;
-		uint16_t PC1_VALUE = (GPIOC->IDR & (1 << 1)) ? 1 : 0;
+//		GPIOA->BSRR = (1U << 5);
+//		GPIOC->BSRR = (1U << 1);
+//		uint8_t pc0_val = (GPIOC->IDR & 1) == 1 ? 1 : 0;
+//		uint16_t PC1_VALUE = (GPIOC->IDR & (1 << 1)) ? 1 : 0;
+
+		/* SPI loopback test */
+		uint8_t txValue = 0xAB; // 보낼 데이터
+		uint8_t rxValue = 0x00; // 받을 데이터
+
+		// 데이터 송수신
+		rxValue = BKEL_SPI2_Transfer(txValue);
+		transfer_count++;
+        int msg_len = sprintf(uart_buf, "\r\n[SPI TEST #%lu] TX: 0x%02X, RX: 0x%02X\r\n", transfer_count, txValue, rxValue);
+        HAL_UART_Transmit(&huart2, (uint8_t*)uart_buf, msg_len, 100);
+
+        if(txValue == rxValue) {
+            GPIOA->BSRR = (1U << 5); // LED ON
+        } else {
+            GPIOA->BRR = (1U << 5);  // LED OFF
+        }
+
 #endif
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
 	}
@@ -157,4 +180,3 @@ void app_serviceInit(void)
 {
 
 }
-
