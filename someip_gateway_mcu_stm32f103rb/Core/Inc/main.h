@@ -23,7 +23,7 @@ extern "C" {
 #include <BKEL_BSW_gpio.h>
 #include <BKEL_BSW_adc.h>
 
-
+#include <string.h>
 #ifdef USE_UART_DEBUG
 #include "stdio.h"
 #endif

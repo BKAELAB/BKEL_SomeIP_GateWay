@@ -64,12 +64,6 @@ void f_sendPeriodAdvertiseTask(void)
 		uint8_t test[] = { 0x01, 0x02, 0x03, 0x04 };
 		uint8_t crc = calc_crc8(test, sizeof(test));
 
-		/* GPIO DI/DO Test */
-//		GPIOA->BSRR = (1U << 5);
-//		GPIOC->BSRR = (1U << 1);
-//		uint8_t pc0_val = (GPIOC->IDR & 1) == 1 ? 1 : 0;
-//		uint16_t PC1_VALUE = (GPIOC->IDR & (1 << 1)) ? 1 : 0;
-
 		/* GPIO_read/write/toggle Test */
 		led.Pin_Channel = GPIOA;
 		led.Pin_Number = (1U << 5);
@@ -81,6 +75,13 @@ void f_sendPeriodAdvertiseTask(void)
 		pinTest = BKEL_read_pin(&led);
 		printf("[state]= %d\r\n", pinTest);
 		BKEL_toggle_pin(&led);
+
+		for(int i = 0; i < (ADC_DMA_BUF_LEN / 2); i++) {
+			adc_pc4[i] = adc_dma_buf[i * 2];
+			adc_pc5[i] = adc_dma_buf[i * 2 + 1];
+		}
+		/* SPI Loopback Test */
+		BKEL_SPI2_Loopback();
 #endif
 
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
