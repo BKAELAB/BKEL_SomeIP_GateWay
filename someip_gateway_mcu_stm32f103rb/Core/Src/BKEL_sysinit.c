@@ -96,11 +96,9 @@ int _write(int file, char *ptr, int len)
 void system_init(void)
 {
 	HAL_Init();
-	// SystemClock_Config();
 	BKEL_CLK_Init();
 	BKEL_GPIO_Init();
 	MX_USART2_UART_Init();
-//	MX_ADC1_Init();
 	BKEL_PWM_Init();
 }
 
@@ -149,6 +147,7 @@ static void BKEL_CLK_Init(void)
     RCC->CFGR &= ~(RCC_CFGR_SW_CLEAR);           								// SW 초기화
     RCC->CFGR |= (RCC_CFGR_SW_PLL_VAL);            								// PLL selected as system clock
     while ((RCC->CFGR & (RCC_CFGR_SWS_CLEAR)) != (RCC_CFGR_SWS_PLL_STATUS));	// 시스템 클럭이 실제로 PLL로 바뀌었는지 확인
+    SystemCoreClockUpdate();
 }
 
 /**
