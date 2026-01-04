@@ -6,18 +6,15 @@
  */
 
 #include "main.h"
-#include <stdio.h>
+#include "stream_buffer.h"
 
 /* Defines */
-#define QUEUE_LENGTH 10
-#define ITEM_SIZE    sizeof(ServiceID_t)
-
-/* Exturn */
-extern uint8_t BKEL_SPI2_Transfer(uint8_t data);
+#define RX_STREAM_SIZE   512
 
 /* LOCAL VARS */
-static StaticQueue_t xQueueBuffer;
-static ServiceID_t ucQueueStorage[ QUEUE_LENGTH * ITEM_SIZE ];
+static StaticStreamBuffer_t rxStreamCtrl;
+static uint8_t rxStreamStorage[RX_STREAM_SIZE];
+static StreamBufferHandle_t rxStream;
 
 /* Function Prototypes */
 void rtos_taskinit(void);
@@ -45,64 +42,79 @@ void f_inittask(void)
 }
 
 /* TASK Implementation */
+/*
+ * Brief : Send to All Service_List for GateWay
+ * Period = 5s
+ */
 void f_sendPeriodAdvertiseTask(void)
 {
-	static uint32_t transfer_count = 0;
-	static char uart_buf[100];
 	for (;;)
 	{
-		/* TO DO
-		 * advertise ALL Service ID & Infomation
-		 * Period = 5s
-		 */
+
+
 
 #if USE_FEATURE_TEST	// Test Code Here
-//		AppPwmTest();	// For PWM Test Code.
+		AppPwmTest();	// For PWM Test Code.
+		AppServiceTest();  // For Packet Send Test.
+
+		/* CRC Test */
+		uint8_t test[] = { 0x01, 0x02, 0x03, 0x04 };
+		uint8_t crc = calc_crc8(test, sizeof(test));
 
 		/* GPIO DI/DO Test */
-//		GPIOA->BSRR = (1U << 5);
-//		GPIOC->BSRR = (1U << 1);
-//		uint8_t pc0_val = (GPIOC->IDR & 1) == 1 ? 1 : 0;
-//		uint16_t PC1_VALUE = (GPIOC->IDR & (1 << 1)) ? 1 : 0;
+		GPIOA->BSRR = (1U << 5);
+		GPIOC->BSRR = (1U << 1);
+		uint8_t pc0_val = (GPIOC->IDR & 1) == 1 ? 1 : 0;
+		uint16_t PC1_VALUE = (GPIOC->IDR & (1 << 1)) ? 1 : 0;
 
-		/* SPI loopback test */
-		uint8_t txValue = 0xAB; // 보낼 데이터
-		uint8_t rxValue = 0x00; // 받을 데이터
-
-		// 데이터 송수신
-		rxValue = BKEL_SPI2_Transfer(txValue);
-		transfer_count++;
-        int msg_len = sprintf(uart_buf, "\r\n[SPI TEST #%lu] TX: 0x%02X, RX: 0x%02X\r\n", transfer_count, txValue, rxValue);
-        HAL_UART_Transmit(&huart2, (uint8_t*)uart_buf, msg_len, 100);
-
-        if(txValue == rxValue) {
-            GPIOA->BSRR = (1U << 5); // LED ON
-        } else {
-            GPIOA->BRR = (1U << 5);  // LED OFF
-        }
+		for(int i = 0; i < (ADC_DMA_BUF_LEN / 2); i++) {
+			adc_pc4[i] = adc_dma_buf[i * 2];
+			adc_pc5[i] = adc_dma_buf[i * 2 + 1];
+		}
 
 #endif
+
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
 	}
 }
 
+/*
+ * Brief : unBlock Condition = StreamBufferReceive
+ * UART Rx ISR : --PUSH--> StreamBuffer , portYIELDFromISR
+ * THIS TASK : Frame Parsing , Notify Worker Tasks
+ */
 void f_handleCommandTask(void)
 {
-	ServiceID_t sid;
-	for(;;)
-	{
-		/*
-		 * TO DO
-		 * UART Rx ISR(DMA/IDLE) -> PushQueue
-		 * DLC|SID|OPCODE
-		 * Parsing sid & opcode
-		 * branch sid (RPC or Diagnostic Data)
-		 */
-		xQueueReceive(hQueue, &sid, portMAX_DELAY); // Block until push data to Queue
+    static uint8_t rx_buf[512];
+    static size_t  rx_len = 0;
+    uint8_t temp[64];
 
+    for (;;)
+    {
+        size_t n = xStreamBufferReceive(
+            rxStream,
+            temp,
+            sizeof(temp),
+            portMAX_DELAY
+        );
 
-	}
+        if (n > 0)
+        {
+            if (rx_len + n > sizeof(rx_buf))
+            {
+                // overflow check
+                rx_len = 0;
+                continue;
+            }
+
+            memcpy(rx_buf + rx_len, temp, n);
+            rx_len += n;
+
+            parse_packet(rx_buf, &rx_len);
+        }
+    }
 }
+
 
 void f_sendDataTask(void)
 {
@@ -141,10 +153,13 @@ void f_RPCTask(void)
 void rtos_taskinit(void)
 {
 
-	hQueue = xQueueGenericCreateStatic(QUEUE_LENGTH,
-									   ITEM_SIZE,
-									   ucQueueStorage,
-									   &xQueueBuffer, 0 );
+	rxStream = xStreamBufferCreateStatic(
+	        RX_STREAM_SIZE,
+	        1,                    // trigger level (1Byte)
+	        rxStreamStorage,
+	        &rxStreamCtrl
+	    );
+	configASSERT(rxStream != NULL);
 
 	/* Advertise Task */
 	xTaskCreate((TaskFunction_t)f_sendPeriodAdvertiseTask ,
@@ -156,14 +171,14 @@ void rtos_taskinit(void)
 	/* Handle Command Task */
 	xTaskCreate((TaskFunction_t)f_handleCommandTask ,
 			  "T_Command_Customer" ,
-			  BKEL_TASK_STACK_SIZE_MIN ,
+			  BKEL_TASK_STACK_SIZE_MAX ,
 			  NULL ,
 			  BKEL_TASK_PRI_REALTIME_2 ,
 			  &hCommandCustomerTask);
 	/* Send D_Data Task */
 	xTaskCreate((TaskFunction_t)f_sendDataTask ,
 			  "T_Send_Dignostic_Data" ,
-			  BKEL_TASK_STACK_SIZE_MID ,
+			  BKEL_TASK_STACK_SIZE_MIN ,
 			  NULL ,
 			  BKEL_TASK_PRI_REALTIME_1 ,
 			  &hSendDataTask);
@@ -180,3 +195,4 @@ void app_serviceInit(void)
 {
 
 }
+
