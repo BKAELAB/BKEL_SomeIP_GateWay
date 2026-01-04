@@ -18,3 +18,5 @@ BKEL_GPIO_STATE_T BKEL_read_pin(BKEL_gpio_pin * gpiopin)
 
 	return retGpioState;
 }
+
+
