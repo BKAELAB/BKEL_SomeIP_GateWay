@@ -9,6 +9,9 @@
 /* Variables */
 volatile uint16_t adc_dma_buf[ADC_DMA_BUF_LEN];		// 프로그램 코드 외부에 있는 어떤 요인에 의해 변경될 수 있음
 
+// Panho 26.01.05
+volatile uint8_t uart_rx_dma_buf[UART_RX_BUF_SIZE];
+
 /* DEFINES For CLOCK */
 /* FLASH 설정 */
 #define FLASH_ACR_PRFTBE_EN         (1U << 4)       // Prefetch buffer enable
@@ -136,7 +139,7 @@ static void BKEL_CLK_Init(void);
 
 //void SystemClock_Config(void);
 static void BKEL_GPIO_Init(void);
-static void MX_USART2_UART_Init(void);
+// static void MX_USART2_UART_Init(void);
 
 // 26.01.02 Hwang SeokJun
 static void BKEL_ADC1_DMA_Init(void);
@@ -148,6 +151,9 @@ static void BKEL_PWM_Init(void);
 static void BKEL_GPIO_Init(void);
 // 26.01.02 DHKWON
 static void BKEL_SPI_Init(void);
+
+// 26.01.04 Pan
+static void BKEL_USART2_DMA_Init(void);
 
 #ifdef USE_UART_DEBUG
 int _write(int file, char *ptr, int len)
@@ -164,7 +170,8 @@ void system_init(void)
 	HAL_Init();
 	BKEL_CLK_Init();
 	BKEL_GPIO_Init();
-	MX_USART2_UART_Init();
+	//MX_USART2_UART_Init();
+	BKEL_USART2_DMA_Init();
 	BKEL_ADC1_DMA_Init();
 	BKEL_PWM_Init();
 	BKEL_SPI_Init();
@@ -293,6 +300,46 @@ static void BKEL_ADC1_DMA_Init(void)
   * @param None
   * @retval None
   */
+
+static void BKEL_USART2_DMA_Init(void)
+{
+	// USART2, DMA1 클럭 공급
+    PAN_RCC_APB1ENR |= (0x01 << 17); // USART2EN
+    PAN_RCC_AHBENR  |= (0x01 << 0);  // DMA1EN
+
+    // PA2: TX, PA3: RX
+    PAN_GPIOA_CRL &= ~((0x0F << 8) | (0x0F << 12)); // CRL -> PA2: 8 9 10 11, PA3: 12 13 14 15 -> 0으로 clear
+    PAN_GPIOA_CRL |= (0x0B << 8); 	// PA2 -> |1|0|1|1| -> Alternate Function + Output 50MHz
+	PAN_GPIOA_CRL |= (0x04 << 12);  // PA3 -> |0|1|0|0| -> Floating Input + Input
+
+    // Baudrate: 115200
+    /*
+	 * Baudrate = 소스클럭 / (16 * usartdiv)
+	 * 115200 = 36000000 / (16 * usartdiv) => usartdiv = 19.53125
+	 * 0x13, 0x9
+	 *
+    */
+    PAN_USART2_BRR = 0x139;
+
+    // DMA RX
+    PAN_DMA1_CPAR  = (unsigned int)&PAN_USART2_DR;    // CPAR -> 데이터 가져올 곳 -> usart data register
+    PAN_DMA1_CMAR  = (unsigned int)uart_rx_dma_buf;   // CMAR -> 데이터 넣을 곳 -> 버퍼
+    PAN_DMA1_CNDTR = 256;                             // 버퍼 크기
+
+    // MINC: 7, CIRC: 5, EN: 0
+    PAN_DMA1_CCR = (1 << 7) | (1 << 5) | (1 << 0);
+
+    // USART2 - RE, TE, IDLEIE, DMAR, UE
+    PAN_USART2_CR1 |= (1 << 4) | (1 << 3) | (1 << 2); // RE, TE, IDLEIE
+    PAN_USART2_CR3 |= (1 << 6);		// DMAR
+    PAN_USART2_CR1 |= (1 << 13);	// UE
+
+    // NVIC 인터럽트
+    // USART2: IRQ 38 -> 38 : ISER1 6번
+    PAN_NVIC_ISER1 |= (0x01 << 6);
+}
+
+/*
 static void MX_USART2_UART_Init(void)
 {
   huart2.Instance = USART2;
@@ -309,6 +356,7 @@ static void MX_USART2_UART_Init(void)
   }
 
 }
+*/
 
 /**
   * @brief GPIO Initialization Function
