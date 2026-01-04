@@ -33,8 +33,9 @@ uint8_t BKEL_SPI2_Transfer(uint8_t data) {
 void BKEL_SPI2_Loopback(void) {
 	static uint32_t transfer_count = 0;
 
-	uint8_t txValue = 0xAB; // 보낼 데이터
-	uint8_t rxValue = BKEL_SPI2_Transfer(txValue); // 받을 데이터
+	static uint8_t txValue = 0x01; // 보낼 데이터
+	static uint8_t rxValue = 0x01;
+	rxValue = BKEL_SPI2_Transfer(txValue++); // 받을 데이터
 
 	transfer_count++;
 	printf("[SPI TEST #%lu] TX: 0x%02X, RX: 0x%02X\r\n", transfer_count, txValue, rxValue);

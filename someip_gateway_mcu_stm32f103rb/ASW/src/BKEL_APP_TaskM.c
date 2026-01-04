@@ -71,7 +71,8 @@ void f_sendPeriodAdvertiseTask(void)
 			adc_pc4[i] = adc_dma_buf[i * 2];
 			adc_pc5[i] = adc_dma_buf[i * 2 + 1];
 		}
-
+		/* SPI Loopback Test */
+		BKEL_SPI2_Loopback();
 #endif
 
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
