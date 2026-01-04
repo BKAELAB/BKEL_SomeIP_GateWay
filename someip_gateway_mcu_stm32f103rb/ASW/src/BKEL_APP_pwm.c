@@ -14,5 +14,5 @@ void AppPwmTest(void)
 	BKEL_PWM_SetDuty(duty);
 	duty = duty < 100 ? duty + 10 : 0U;
 	uint8_t result = BKEL_PWM_ReadDuty();
-	printf("PWM TEST. Duty : %d\r\n" , result);
+	// printf("PWM TEST. Duty : %d\r\n" , result);
 }

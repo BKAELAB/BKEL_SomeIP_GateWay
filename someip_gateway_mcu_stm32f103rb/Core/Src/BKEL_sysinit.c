@@ -113,7 +113,7 @@ void system_init(void) {
 	 * HAL 라이브러리는 stm32f1xx_hal_conf.h의 HSE_VALUE = 8000000U 기준으로 Baudrade 계산
 	 * SystemCoreClockUpdate() 미호출 시 UART 타이밍 오차로 인해 Putty 글자 깨짐
 	 * */
-	SystemCoreClockUpdate();
+	//SystemCoreClockUpdate();
 	BKEL_GPIO_Init();
 	MX_USART2_UART_Init();
 //	MX_ADC1_Init();
