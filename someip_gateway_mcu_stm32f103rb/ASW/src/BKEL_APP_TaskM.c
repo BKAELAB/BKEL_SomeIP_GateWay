@@ -6,14 +6,10 @@
  */
 
 #include "main.h"
-#include <stdio.h>
 #include "stream_buffer.h"
 
 /* Defines */
 #define RX_STREAM_SIZE   512
-
-/* Exturn */
-extern uint8_t BKEL_SPI2_Transfer(uint8_t data);
 
 /* LOCAL VARS */
 static StaticStreamBuffer_t rxStreamCtrl;
@@ -52,7 +48,6 @@ void f_inittask(void)
  */
 void f_sendPeriodAdvertiseTask(void)
 {
-
 	for (;;)
 	{
 
@@ -61,7 +56,7 @@ void f_sendPeriodAdvertiseTask(void)
 #if USE_FEATURE_TEST	// Test Code Here
 		AppPwmTest();	// For PWM Test Code.
 		AppServiceTest();  // For Packet Send Test.
-		BKEL_SPI2_Loopback();	// For SPI Test Code.
+
 		/* CRC Test */
 		uint8_t test[] = { 0x01, 0x02, 0x03, 0x04 };
 		uint8_t crc = calc_crc8(test, sizeof(test));
@@ -76,6 +71,7 @@ void f_sendPeriodAdvertiseTask(void)
 			adc_pc4[i] = adc_dma_buf[i * 2];
 			adc_pc5[i] = adc_dma_buf[i * 2 + 1];
 		}
+
 #endif
 
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
@@ -199,3 +195,4 @@ void app_serviceInit(void)
 {
 
 }
+
