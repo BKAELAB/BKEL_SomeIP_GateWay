@@ -7,13 +7,13 @@ BKEL_GPIO_STATE_T BKEL_read_pin(BKEL_gpio_pin * gpiopin)
 
 	BKEL_GPIO_STATE_T retGpioState;
 
-	if ((gpio_channel->IDR & gpio_number) != (uint32_t)BKEL_GPIO_U_SET)
+	if ((gpio_channel->IDR & gpio_number) != (uint32_t)BKEL_GPIO_U_RESET)
 	{
-		retGpioState = BKEL_GPIO_U_RESET;
+		retGpioState = BKEL_GPIO_U_SET;
 	}
 	else
 	{
-		retGpioState = BKEL_GPIO_U_SET;
+		retGpioState = BKEL_GPIO_U_RESET;
 	}
 
 	return retGpioState;
@@ -23,12 +23,14 @@ void BKEL_write_pin(BKEL_gpio_pin * gpiopin, BKEL_GPIO_STATE_T pinstate)
 {
 	GPIO_TypeDef* gpio_channel = gpiopin->Pin_Channel;
 	uint16_t 	  gpio_number = gpiopin->Pin_Number;
-
-	if((gpio_channel->ODR & gpio_number) != BKEL_GPIO_U_RESET)
+	// RESET: 0 SET: 1
+	// BSRR[31:16] RESET
+	// BSRR[15:0] SET
+	if(pinstate != BKEL_GPIO_U_RESET)
 	{
 		gpio_channel->BSRR = gpio_number;
 	}
-	else //bsrr[31:16] LOW
+	else
 	{
 		gpio_channel->BSRR = (uint32_t)gpio_number << 16U;
 	}

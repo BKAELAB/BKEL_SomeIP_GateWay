@@ -11,8 +11,8 @@
 #include "main.h"
 
 typedef enum BKEL_GPIO_STATE {
-	BKEL_GPIO_U_SET,
 	BKEL_GPIO_U_RESET,
+	BKEL_GPIO_U_SET,
 	BKEL_GPIO_U_STATE_END,
 } BKEL_GPIO_STATE_T;
 

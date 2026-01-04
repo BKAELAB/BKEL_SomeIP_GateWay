@@ -42,7 +42,7 @@ void f_inittask(void)
 }
 
 BKEL_gpio_pin led;
-BKEL_GPIO_STATE_T test;
+BKEL_GPIO_STATE_T pinTest;
 
 /* TASK Implementation */
 /*
@@ -73,9 +73,13 @@ void f_sendPeriodAdvertiseTask(void)
 		/* GPIO_read/write/toggle Test */
 		led.Pin_Channel = GPIOA;
 		led.Pin_Number = (1U << 5);
-		test = BKEL_read_pin(&led);
+		pinTest = BKEL_read_pin(&led);
 		BKEL_write_pin(&led, BKEL_GPIO_U_RESET);
-		test = BKEL_read_pin(&led);
+		pinTest = BKEL_read_pin(&led);
+		printf("[state]= %d\r\n", pinTest);
+		BKEL_write_pin(&led, BKEL_GPIO_U_SET);
+		pinTest = BKEL_read_pin(&led);
+		printf("[state]= %d\r\n", pinTest);
 		BKEL_toggle_pin(&led);
 #endif
 
