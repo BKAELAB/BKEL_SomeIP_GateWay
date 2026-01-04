@@ -196,3 +196,24 @@ void app_serviceInit(void)
 
 }
 
+void vUartTask(void *pvParameters) {
+    uint8_t rxBuffer[16]; // 한 번에 꺼내올 임시 그릇
+    size_t xReceivedBytes;
+
+    for (;;) {
+        // 스트림 버퍼에서 데이터가 올 때까지 무한정 대기 (Blocked 상태)
+        xReceivedBytes = xStreamBufferReceive(xStreamBuffer,
+                                              (void *)rxBuffer,
+                                              sizeof(rxBuffer),
+                                              portMAX_DELAY);
+
+        if (xReceivedBytes > 0) {
+            // [성공!] 여기서 rxBuffer에 담긴 데이터를 처리합니다.
+            // 예: LED를 켜거나, SomeIP 메시지로 조립하거나, 화면에 에코(Echo) 출력
+            for(size_t i = 0; i < xReceivedBytes; i++) {
+                while(!(USART2->SR & (1 << 7))); // TXE 확인
+                USART2->DR = rxBuffer[i];         // 받은 대로 다시 보내기 (Echo)
+            }
+        }
+    }
+}

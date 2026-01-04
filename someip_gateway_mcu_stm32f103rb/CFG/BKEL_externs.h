@@ -10,6 +10,10 @@
 
 #include "BKEL_typedef.h"
 #include "queue.h"
+#include "FreeRTOS.h"
+#include "stream_buffer.h"
+
+#define SB_SIZE 129
 
 /* Externs */
 EXTERN hADC_t  hadc1;

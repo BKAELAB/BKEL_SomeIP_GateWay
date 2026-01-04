@@ -5,6 +5,8 @@
  *      Author: seokjun.kang
  */
 #include "main.h"
+#include "FreeRTOS.h"
+#include "stream_buffer.h"
 
 /* Variables */
 volatile uint16_t adc_dma_buf[ADC_DMA_BUF_LEN];		// 프로그램 코드 외부에 있는 어떤 요인에 의해 변경될 수 있음
@@ -122,6 +124,27 @@ volatile uint16_t adc_dma_buf[ADC_DMA_BUF_LEN];		// 프로그램 코드 외부�
 #define GPIO_PIN_B1				(13U-8U)	/* GPIOC PIN13: BTN1 */
 #define EXTI_PIN13				(1U)		/* EXTI13 [7:4] */
 
+/* UART PIN */
+#define USART_SR_RXNE        (1U << 5)  // Receive Data Register Not Empty
+
+/* GPIO (PA5 LED) */
+#define GPIO_ODR_ODR5        (1U << 5)  // Port Output Data Pin 5
+/* GPIO CRL (Configuration Register Low) */
+#define GPIO_CRL_MODE3_Pos    (12U)
+#define GPIO_CRL_MODE3_Msk    (0xFU << GPIO_CRL_MODE3_Pos)
+#define GPIO_MODE_INPUT_FL    (0x4U)
+
+/* AFIO EXTICR1 */
+#define AFIO_EXTICR1_EXTI3_Pos (12U)
+#define AFIO_EXTICR1_EXTI3_Msk (0xFU << AFIO_EXTICR1_EXTI3_Pos)
+#define AFIO_EXTICR_PORTA      (0x0U)
+
+/* EXTI (Line 3) */
+#define EXTI_IMR_MR3         (1U << 3)  // Interrupt Mask on line 3
+#define EXTI_FTSR_TR3        (1U << 3)  // Falling Trigger on line 3
+#define EXTI_PR_PR3          (1U << 3)  // Pending Bit for line 3
+#define EXTI_RTSR_TR3        (1U << 3)  // Rising trigger selection for line 3
+
 ADC_HandleTypeDef hadc1;
 UART_HandleTypeDef huart2;
 
@@ -159,6 +182,9 @@ void system_init(void)
 	MX_USART2_UART_Init();
 	BKEL_ADC1_DMA_Init();
 	BKEL_PWM_Init();
+	BKEL_StreamBuffer_Init();
+	USART2_IRQHandler();
+	BKEL_EXTI3_Init();
 }
 
 
@@ -405,4 +431,54 @@ static void BKEL_PWM_Init(void)
 
 	// 5. Counter Enable
 	TIM3->CR1 |= TIM_CR1_CEN;
+}
+
+
+static uint8_t ucStreamBufferStorage[SB_SIZE];
+static StaticStreamBuffer_t xStreamBufferStruct;
+
+StreamBufferHandle_t xStreamBuffer = NULL;
+
+void BKEL_StreamBuffer_Init(void) {
+    xStreamBuffer = xStreamBufferCreateStatic(
+                        SB_SIZE,
+                        1,
+						ucStreamBufferStorage,
+                        &xStreamBufferStruct
+                    );
+}
+
+void USART2_IRQHandler(void) {
+    if (USART2->SR & USART_SR_RXNE) {
+    	GPIOA->ODR ^= GPIO_ODR_ODR5;
+        uint8_t rxData = (uint8_t)(USART2->DR & 0xFF);
+
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xStreamBufferSendFromISR(xStreamBuffer, &rxData, 1, &xHigherPriorityTaskWoken);
+
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+}
+
+void BKEL_EXTI3_Init(void) {
+    RCC->APB2ENR |= (RCC_APB2ENR_IOPAEN | RCC_APB2ENR_AFIOEN);
+
+    GPIOA->CRL &= ~GPIO_CRL_MODE3_Msk;
+    GPIOA->CRL |= (GPIO_MODE_INPUT_FL << GPIO_CRL_MODE3_Pos);
+
+    AFIO->EXTICR[0] &= ~AFIO_EXTICR1_EXTI3_Msk;
+    AFIO->EXTICR[0] |= (AFIO_EXTICR_PORTA << AFIO_EXTICR1_EXTI3_Pos);
+
+    EXTI->IMR  |= EXTI_IMR_MR3;
+    EXTI->FTSR |= EXTI_FTSR_TR3;
+    EXTI->RTSR &= ~EXTI_RTSR_TR3;
+
+    EXTI->PR = EXTI_PR_PR3;
+    NVIC_SetPriority(EXTI3_IRQn, 5);
+    NVIC_EnableIRQ(EXTI3_IRQn);
+
+    USART2->CR1 |= USART_CR1_RXNEIE;
+
+    NVIC_EnableIRQ(USART2_IRQn);
+    NVIC_SetPriority(USART2_IRQn, 5);
 }

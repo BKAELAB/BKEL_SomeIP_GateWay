@@ -28,6 +28,8 @@ extern "C" {
 #include "stdio.h"
 #endif
 
+#define SB_SIZE 129  // 상자의 크기 (128바이트 + 여유 1바이트)
+
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
