@@ -11,6 +11,8 @@
 #include "BKEL_typedef.h"
 
 /* PROTOCOL DEFINES */
+#define SOF_DATA_VALUE 			(0xAAU)
+
 /* SIDs */
 #define SERVICE_ADVERTISE 		(0x01U)
 #define RPC_LD2_CONTROL 		(0x10U)
@@ -45,18 +47,19 @@
 #define SPI_OPCODE_WRITE		(0x01U)
 
 /* STRUCT */
+#pragma pack(push,1)
 typedef struct {
 	uint8_t sid;
 	uint8_t type;
 	uint16_t dlc;
 }BKEL_Data_Frame_Header_t;
+#pragma pack(pop)
 
 typedef enum {
-	SID_Service_Advertise = 0,
-	SID_RPC,
-	SID_DIAG
-}BKEL_SID_e;
-
+	PARSE_OK,
+	PARSE_INCOMPLETE,
+	PARSE_INVALID
+}BKEL_PARSE_RESULT_e;
 
 
 EXTERN size_t build_frame( uint8_t *out_buf,
@@ -66,6 +69,8 @@ EXTERN size_t build_frame( uint8_t *out_buf,
 						 const uint8_t *payload,
 						 uint16_t payload_len);
 
-EXTERN void packet_parsing();
+EXTERN void parse_packet(uint8_t *buf, size_t *len);
+
+
 
 #endif /* ASW_INC_BKEL_APP_PROTOCOL_H_ */

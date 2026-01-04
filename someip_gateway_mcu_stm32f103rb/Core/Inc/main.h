@@ -17,9 +17,12 @@ extern "C" {
 #include <BKEL_APP_TaskM.h>
 #include <BKEL_APP_service.h>
 #include <BKEL_APP_pwm.h>
+#include <BKEL_APP_protocol.h>
+#include <BKEL_APP_crc.h>
 
 #include <BKEL_BSW_gpio.h>
 #include <BKEL_BSW_adc.h>
+
 
 #ifdef USE_UART_DEBUG
 #include "stdio.h"
