@@ -7,7 +7,7 @@
 
 #include "BKEL_APP_service.h"
 #include "string.h"
-
+#include "BKEL_BSW_uart.h"
 
 
 #if USE_FEATURE_TEST
@@ -21,10 +21,9 @@ void uart_hex_dump(UART_HandleTypeDef *huart,
     for (size_t i = 0; i < len; i++)
     {
         int n = snprintf(line, sizeof(line), "%02X ", buf[i]);
-        HAL_UART_Transmit(huart, (uint8_t*)line, n, 100);
+        BKEL_UART_Tx((uint8_t*)line, n);
     }
-
-    HAL_UART_Transmit(huart, (uint8_t*)"\r\n", 2, 100);
+    BKEL_UART_Tx((uint8_t*)"\r\n", 2);
 }
 
 EXTERN void AppServiceTest()

@@ -25,7 +25,7 @@ extern "C" {
 #include <BKEL_BSW_spi.h>
 
 // Panho 26.01.05
-#include <BKEL_uart.h>
+#include <BKEL_BSW_uart.h>
 
 #include <string.h>
 #ifdef USE_UART_DEBUG

@@ -2,6 +2,10 @@
 #ifndef __BKEL_UART_H__
 #define __BKEL_UART_H__
 
+// includes
+#include <stdint.h>
+
+// defines
 /* Base */
 #define PAN_RCC           			0x40021000
 #define PAN_GPIOA         			0x40010800
@@ -38,9 +42,13 @@
 #define PAN_USART_CR1_RE          	(0x01 << 2)		/* Receiver enable */
 #define PAN_USART_CR3_DMAR        	(0x01 << 6)		/* DMA enable receiver */
 
-// 버퍼
 #define UART_RX_BUF_SIZE    		256
+// vars
 extern volatile uint8_t uart_rx_dma_buf[UART_RX_BUF_SIZE]; // DMA rx 버퍼용
+
+// Functions
+extern void BKEL_UART_Tx(const uint8_t *buf, uint16_t buf_len);
+
 
 #endif // __BKEL_UART_H__
 ////////////////////////////////////////////////////////////////////////

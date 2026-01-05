@@ -60,10 +60,6 @@ void f_sendPeriodAdvertiseTask(void)
 		AppPwmTest();	// For PWM Test Code.
 		AppServiceTest();  // For Packet Send Test.
 
-		/* CRC Test */
-		uint8_t test[] = { 0x01, 0x02, 0x03, 0x04 };
-		uint8_t crc = calc_crc8(test, sizeof(test));
-
 		/* GPIO_read/write/toggle Test */
 		led.Pin_Channel = GPIOA;
 		led.Pin_Number = (1U << 5);
