@@ -78,6 +78,9 @@ void f_sendPeriodAdvertiseTask(void)
 		}
 		/* SPI Loopback Test */
 		BKEL_SPI2_Loopback();
+
+		/*ADC_GetValue Test*/
+		getValueTest();
 #endif
 
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
