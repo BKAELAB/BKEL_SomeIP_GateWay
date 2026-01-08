@@ -1,7 +1,7 @@
 # BKEL_SomeIP_GateWay
 
 - Simple Architecture
-<img width="657" height="544" alt="image" src="https://github.com/user-attachments/assets/81cf55b9-4fff-441f-8e92-3153df253ac6" />
+<img width="1888" height="739" alt="image" src="https://github.com/user-attachments/assets/16038927-1d1e-4787-be0e-075f626e46a8" />
 
 ## Source Code
   1. [STM32F103RB F/W](https://github.com/BKAELAB/BKEL_SomeIP_GateWay/tree/mcu) : move to mcu branch
