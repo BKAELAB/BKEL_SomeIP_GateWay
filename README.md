@@ -1,6 +1,6 @@
 # BKEL_SomeIP_GateWay
 
-- Simple Architecture
+- Gateway Architecture
 <img width="1888" height="739" alt="image" src="https://github.com/user-attachments/assets/16038927-1d1e-4787-be0e-075f626e46a8" />
 
 ## Source Code
