@@ -137,7 +137,10 @@ void f_sendDataTask(void)
 						 	 	   portMAX_DELAY); // Block until xTaskNotifyGive();
 	}
 }
+AppService_RPC_MCU_RESET(payload, dlc){
 
+
+}
 void f_RPCTask(void)
 {
 	for(;;)
@@ -151,6 +154,9 @@ void f_RPCTask(void)
 
 		command = ulTaskNotifyTake(pdFALSE,
 						 	 	   portMAX_DELAY); // Block until xTaskNotifyGive();
+
+		}
+
 	}
 }
 

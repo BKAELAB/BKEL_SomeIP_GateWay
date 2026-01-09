@@ -27,6 +27,8 @@ static BKEL_PARSE_RESULT_e parse_one_frame(const uint8_t *buf,size_t buf_len,siz
  * <Result>
  * e.g. Frame : [sof][0x01][type][dlc][payload][cid][crc8]
  */
+
+
 size_t build_frame(uint8_t *out_buf,
                  size_t   out_buf_size,
                  uint8_t  sid,
@@ -107,7 +109,83 @@ static void handle_frame(uint8_t sid, uint8_t type,
                          const uint8_t *payload, uint16_t dlc,
                          uint16_t cid)
 {
-    // SID 기반 분기처리.
+	// SID 기반 분기처리.
+
+    bool is_valid_dlc = false;
+
+    /* SID별 DLC 유효성 검사 */
+    switch (sid) {
+        case SERVICE_ADVERTISE:     // 0x01: Variable
+        	if (dlc > 0 && dlc <= 16) is_valid_dlc = true;
+				break;
+
+        case RPC_LD2_CONTROL:       // 0x10: 1Byte
+        case RPC_MCU_RESET:         // 0x11: 1Byte
+        case DIAG_GPO_PINSTATE:     // 0x24: 1Byte
+        case DIAG_GPI_PINSTATE:     // 0x25: 1Byte
+        case DIAG_LD2_PINSTATE:     // 0x26: 1Byte
+            if (dlc == 1) is_valid_dlc = true;
+            break;
+
+        case RPC_PWM_SETOUT:        // 0x13: 2Byte
+        case DIAG_PWM_OUTPUT_VALUE: // 0x20: 2Byte
+        case DIAG_PWM_INPUT_VALUE:  // 0x21: 2Byte
+        case DIAG_ADC1_GET_VALUE:   // 0x22: 2Byte
+        case DIAG_ADC2_GET_VALUE:   // 0x23: 2Byte
+            if (dlc == 2) is_valid_dlc = true;
+            break;
+
+        case RPC_SPI_READ:          // 0x12: 5Byte
+            if (dlc == 5) is_valid_dlc = true;
+            break;
+
+        default:
+            /* 정의되지 않은 SID */
+            is_valid_dlc = false;
+            printf("SID: 0x%02x\n", sid);
+            break;
+    }
+
+    /* 유효한 데이터 복사, Notify 전송 */
+    if (is_valid_dlc) {
+        /* 구조체 */
+    	parsed_packet.sid  = sid;
+    	parsed_packet.type = type;
+    	parsed_packet.dlc  = dlc;
+    	parsed_packet.cid  = cid;
+
+        /* payload 복사(배열 크기 16 넘지 않도록) */
+        uint16_t copy_len = (dlc > 16) ? 16 : dlc;
+        if (payload != NULL && dlc > 0) {
+            memcpy(parsed_packet.payload, payload, copy_len);
+        }
+
+        /* 32비트 포인터 */
+        uint32_t packet_addr = (uint32_t)&parsed_packet;
+
+        /* SID에 따라 해당 태스크 깨우기 */
+//        if (sid == SERVICE_ADVERTISE) {
+//			printf("Service Advertise Received: %s\n", parsed_packet.payload);
+//        }
+
+        if (sid >= 0x10 && sid <= 0x1F) {
+            /* RPC */
+            if (hRPCTask != NULL) {
+                xTaskNotify(hRPCTask, packet_addr, eSetValueWithOverwrite);
+            }
+        }
+        else if (sid >= 0x20 && sid <= 0x2F) {
+            /* DIAG */
+            if (hSendDataTask != NULL) {
+                xTaskNotify(hSendDataTask, packet_addr, eSetValueWithOverwrite);
+            }
+        }
+    }
+
+    else {
+        /* DLC가 일치하지 않거나 정의되지 않은 SID일 경우 로그 출력 */
+        // printf("Invalid Frame: SID[0x%02X], DLC[%d]\n", sid, dlc);
+    }
 }
 
 
