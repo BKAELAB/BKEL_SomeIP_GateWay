@@ -78,6 +78,9 @@ void f_sendPeriodAdvertiseTask(void)
 		}
 		/* SPI Loopback Test */
 		BKEL_SPI2_Loopback();
+
+		/* Handle Frame Test */
+		handle_frame_Test();
 #endif
 
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
@@ -137,10 +140,7 @@ void f_sendDataTask(void)
 						 	 	   portMAX_DELAY); // Block until xTaskNotifyGive();
 	}
 }
-AppService_RPC_MCU_RESET(payload, dlc){
 
-
-}
 void f_RPCTask(void)
 {
 	for(;;)
@@ -155,7 +155,6 @@ void f_RPCTask(void)
 		command = ulTaskNotifyTake(pdFALSE,
 						 	 	   portMAX_DELAY); // Block until xTaskNotifyGive();
 
-		}
 
 	}
 }
