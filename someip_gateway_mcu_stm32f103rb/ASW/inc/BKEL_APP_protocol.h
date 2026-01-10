@@ -61,6 +61,15 @@ typedef enum {
 	PARSE_INVALID
 }BKEL_PARSE_RESULT_e;
 
+typedef struct {
+    uint8_t  sid;
+    uint8_t  type;
+    uint16_t dlc;
+    uint8_t  payload[16];
+    uint16_t cid;
+} BKEL_Common_Packet_t;
+
+static BKEL_Common_Packet_t parsed_packet;
 
 EXTERN size_t build_frame( uint8_t *out_buf,
 						 size_t   out_buf_size,
