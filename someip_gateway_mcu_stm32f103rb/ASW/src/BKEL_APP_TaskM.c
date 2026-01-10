@@ -58,7 +58,9 @@ void f_sendPeriodAdvertiseTask(void)
 
 #if USE_FEATURE_TEST	// Test Code Here
 		AppPwmTest();	// For PWM Test Code.
-		AppServiceTest();  // For Packet Send Test.
+		// AppServiceTest();  // For Packet Send Test.
+
+		AppService_SendAdvertise();     // 메뉴판 송신
 
 		/* GPIO_read/write/toggle Test */
 		led.Pin_Channel = GPIOA;
