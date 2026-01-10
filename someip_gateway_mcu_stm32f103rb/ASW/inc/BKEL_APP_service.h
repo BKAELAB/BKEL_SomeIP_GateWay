@@ -11,6 +11,7 @@
 
 #if USE_FEATURE_TEST
 	EXTERN void AppServiceTest();
+	void AppService_SendAdvertise(void);
 #endif
 
 
