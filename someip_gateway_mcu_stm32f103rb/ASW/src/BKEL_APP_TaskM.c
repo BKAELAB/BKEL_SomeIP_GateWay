@@ -7,6 +7,7 @@
 
 #include "main.h"
 #include "stream_buffer.h"
+#include "BKEL_APP_protocol.h"
 
 /* Defines */
 #define RX_STREAM_SIZE   512
@@ -15,6 +16,15 @@
 static StaticStreamBuffer_t rxStreamCtrl;
 static uint8_t rxStreamStorage[RX_STREAM_SIZE];
 static StreamBufferHandle_t rxStream;
+
+static StackType_t sendPeriodAdvertiseStack[BKEL_TASK_STACK_SIZE_MAX];
+static StaticTask_t sendPeriodAdvertiseTCB;
+static StackType_t handleCommandStack[BKEL_TASK_STACK_SIZE_MAX];
+static StaticTask_t handleCommandTCB;
+static StackType_t sendDataStack[BKEL_TASK_STACK_SIZE_MIN];
+static StaticTask_t sendDataTCB;
+static StackType_t RPCStack[BKEL_TASK_STACK_SIZE_MID];
+static StaticTask_t RPCTCB;
 
 /* Function Prototypes */
 void rtos_taskinit(void);
@@ -58,9 +68,9 @@ void f_sendPeriodAdvertiseTask(void)
 
 #if USE_FEATURE_TEST	// Test Code Here
 		AppPwmTest();	// For PWM Test Code.
-		// AppServiceTest();  // For Packet Send Test.
-
 		AppService_SendAdvertise();     // 메뉴판 송신
+		BKEL_SPI2_Loopback(); // SPI Loopback Test
+		handle_frame_Test(); // Handle Frame Test
 
 		/* GPIO_read/write/toggle Test */
 		led.Pin_Channel = GPIOA;
@@ -78,11 +88,7 @@ void f_sendPeriodAdvertiseTask(void)
 			adc_pc4[i] = adc_dma_buf[i * 2];
 			adc_pc5[i] = adc_dma_buf[i * 2 + 1];
 		}
-		/* SPI Loopback Test */
-		BKEL_SPI2_Loopback();
 
-		/* Handle Frame Test */
-		handle_frame_Test();
 #endif
 
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
@@ -136,10 +142,17 @@ void f_sendDataTask(void)
 		 * Send Diagnostic Data
 		 * Example : GPIO Pin State or ADC Value
 		 */
-		uint16_t command;
+        uint32_t notifiedValue;
 
-		command = ulTaskNotifyTake(pdFALSE,
-						 	 	   portMAX_DELAY); // Block until xTaskNotifyGive();
+        xTaskNotifyWait(
+            0x00000000,        // clear bits on entry
+            0xFFFFFFFF,        // clear bits on exit
+            &notifiedValue,
+            portMAX_DELAY
+        );
+
+        BKEL_Common_Packet_t *packet = (BKEL_Common_Packet_t *)notifiedValue;
+
 	}
 }
 
@@ -152,11 +165,16 @@ void f_RPCTask(void)
 		 * Remote Procedure Call Task
 		 * Example : Toggle LED2
 		 */
-		uint16_t command;
+        uint32_t notifiedValue;
 
-		command = ulTaskNotifyTake(pdFALSE,
-						 	 	   portMAX_DELAY); // Block until xTaskNotifyGive();
+        xTaskNotifyWait(
+            0x00000000,        // clear bits on entry
+            0xFFFFFFFF,        // clear bits on exit
+            &notifiedValue,
+            portMAX_DELAY
+        );
 
+        BKEL_Common_Packet_t *packet = (BKEL_Common_Packet_t *)notifiedValue;
 
 	}
 }
@@ -165,6 +183,7 @@ void f_RPCTask(void)
 /* RTOS TASK INIT */
 void rtos_taskinit(void)
 {
+	BaseType_t state;
 
 	rxStream = xStreamBufferCreateStatic(
 	        RX_STREAM_SIZE,
@@ -175,33 +194,45 @@ void rtos_taskinit(void)
 	configASSERT(rxStream != NULL);
 
 	/* Advertise Task */
-	xTaskCreate((TaskFunction_t)f_sendPeriodAdvertiseTask ,
-			  "T_Send_Advertise_Period" ,
-			  BKEL_TASK_STACK_SIZE_MAX ,
-			  NULL ,
-			  BKEL_TASK_PRI_NORMAL_0,
-			  &hSendAdvertiseTask	 );
+	hSendAdvertiseTask = xTaskCreateStatic(
+		(TaskFunction_t)f_sendPeriodAdvertiseTask,
+	    "T_Send_Advertise_Period",
+		BKEL_TASK_STACK_SIZE_MAX,
+	    NULL,
+		BKEL_TASK_PRI_NORMAL_0,
+		sendPeriodAdvertiseStack,
+	    &sendPeriodAdvertiseTCB
+	);
 	/* Handle Command Task */
-	xTaskCreate((TaskFunction_t)f_handleCommandTask ,
-			  "T_Command_Customer" ,
-			  BKEL_TASK_STACK_SIZE_MAX ,
-			  NULL ,
-			  BKEL_TASK_PRI_REALTIME_2 ,
-			  &hCommandCustomerTask);
+	hCommandCustomerTask = xTaskCreateStatic(
+		(TaskFunction_t)f_handleCommandTask,
+	    "T_Command_Customer",
+		BKEL_TASK_STACK_SIZE_MAX,
+	    NULL,
+		BKEL_TASK_PRI_REALTIME_2,
+		handleCommandStack,
+	    &handleCommandTCB
+	);
 	/* Send D_Data Task */
-	xTaskCreate((TaskFunction_t)f_sendDataTask ,
-			  "T_Send_Dignostic_Data" ,
-			  BKEL_TASK_STACK_SIZE_MIN ,
-			  NULL ,
-			  BKEL_TASK_PRI_REALTIME_1 ,
-			  &hSendDataTask);
+	hSendDataTask = xTaskCreateStatic(
+		(TaskFunction_t)f_sendDataTask,
+	    "T_Send_Dignostic_Data",
+	    BKEL_TASK_STACK_SIZE_MIN,
+	    NULL,
+	    BKEL_TASK_PRI_REALTIME_1,
+	    sendDataStack,
+	    &sendDataTCB
+	);
 	/* RPC Execute Task */
-	xTaskCreate((TaskFunction_t)f_RPCTask ,
-			  "T_RPC_EXECUTE" ,
-			  BKEL_TASK_STACK_SIZE_MID ,
-			  NULL ,
-			  BKEL_TASK_PRI_REALTIME_1 ,
-			  &hRPCTask);
+	hRPCTask = xTaskCreateStatic(
+		(TaskFunction_t)f_RPCTask,
+	    "T_RPC_EXECUTE",
+		BKEL_TASK_STACK_SIZE_MID,
+	    NULL,
+	    BKEL_TASK_PRI_REALTIME_1,
+		RPCStack,
+	    &RPCTCB
+	);
 }
 
 void app_serviceInit(void)

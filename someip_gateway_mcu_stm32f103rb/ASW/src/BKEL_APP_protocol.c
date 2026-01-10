@@ -7,6 +7,7 @@
 
 #include "BKEL_APP_protocol.h"
 #include "BKEL_APP_crc.h"
+#include "BKEL_APP_cid.h"
 #include "BKEL_externs.h"
 #include <string.h>
 
@@ -162,14 +163,13 @@ static void handle_frame(uint8_t sid, uint8_t type,
         }
 
         /* 32비트 포인터 */
-        uint32_t *packet_addr = (uint32_t)&parsed_packet;
-        //BKEL_Common_Packet_t *packet_addr = &parsed_packet;
-        /* SID에 따라 해당 태스크 깨우기 */
+        uint32_t *packet_addr = (uint32_t *)&parsed_packet;
 
+        /* SID에 따라 해당 태스크 깨우기 */
         if (sid >= 0x10 && sid <= 0x1F) {
             /* RPC */
             if (hRPCTask != NULL) {
-                xTaskNotify(hRPCTask, packet_addr, eSetValueWithOverwrite);
+            	xTaskNotify(hRPCTask, packet_addr, eSetValueWithOverwrite);
             }
         }
         else if (sid >= 0x20 && sid <= 0x2F) {
@@ -184,6 +184,55 @@ static void handle_frame(uint8_t sid, uint8_t type,
         /* DLC가 일치하지 않거나 정의되지 않은 SID일 경우 로그 출력 */
         // printf("Invalid Frame: SID[0x%02X], DLC[%d]\n", sid, dlc);
     }
+}
+
+static BKEL_PARSE_RESULT_e parse_one_frame(const uint8_t *buf,
+										   size_t buf_len,
+										   size_t *consumed)
+{
+    *consumed = 0;
+
+    if (buf[0] != SOF_DATA_VALUE) {
+        *consumed = 1;
+        return PARSE_INVALID;
+    }
+
+    if (buf_len < BKEL_HDR_SIZE)
+        return PARSE_INCOMPLETE;
+
+    BKEL_Data_Frame_Header_t hdr;
+    memcpy(&hdr, buf, BKEL_HDR_SIZE);
+
+    // dlc sanity check
+    if (hdr.dlc > BKEL_MAX_DLC) {
+        *consumed = 1;
+        return PARSE_INVALID;
+    }
+
+    // Calc Full Frame Length
+    size_t frame_len = BKEL_HDR_SIZE + (size_t)hdr.dlc + BKEL_CID_SIZE + BKEL_CRC_SIZE;
+    if (buf_len < frame_len)
+        return PARSE_INCOMPLETE;
+
+    // CRC Check [HDR + PAYLOAD + CID]
+    const uint8_t *payload = buf + BKEL_HDR_SIZE;
+    const uint8_t *cid_ptr = payload + hdr.dlc;
+    const uint8_t *crc_ptr = cid_ptr + BKEL_CID_SIZE;
+    uint16_t cid;
+    memcpy(&cid, cid_ptr, sizeof(cid));
+    uint8_t expected = calc_crc8(buf + 1, BKEL_HDR_SIZE + (size_t)hdr.dlc + BKEL_CID_SIZE);
+    uint8_t got      = *crc_ptr;
+
+	// resync
+    if (expected != got) {
+        *consumed = 1;
+        return PARSE_INVALID;
+    }
+
+    handle_frame(hdr.sid, hdr.type, payload, hdr.dlc, cid);
+
+    *consumed = frame_len;
+    return PARSE_OK;
 }
 
 void handle_frame_Test(void)
@@ -264,54 +313,5 @@ void handle_frame_Test(void)
 
 
     printf("--- [Handle Frame Test] Finish ---\r\n");
-}
-
-static BKEL_PARSE_RESULT_e parse_one_frame(const uint8_t *buf,
-										   size_t buf_len,
-										   size_t *consumed)
-{
-    *consumed = 0;
-
-    if (buf[0] != SOF_DATA_VALUE) {
-        *consumed = 1;
-        return PARSE_INVALID;
-    }
-
-    if (buf_len < BKEL_HDR_SIZE)
-        return PARSE_INCOMPLETE;
-
-    BKEL_Data_Frame_Header_t hdr;
-    memcpy(&hdr, buf, BKEL_HDR_SIZE);
-
-    // dlc sanity check
-    if (hdr.dlc > BKEL_MAX_DLC) {
-        *consumed = 1;
-        return PARSE_INVALID;
-    }
-
-    // Calc Full Frame Length
-    size_t frame_len = BKEL_HDR_SIZE + (size_t)hdr.dlc + BKEL_CID_SIZE + BKEL_CRC_SIZE;
-    if (buf_len < frame_len)
-        return PARSE_INCOMPLETE;
-
-    // CRC Check [HDR + PAYLOAD + CID]
-    const uint8_t *payload = buf + BKEL_HDR_SIZE;
-    const uint8_t *cid_ptr = payload + hdr.dlc;
-    const uint8_t *crc_ptr = cid_ptr + BKEL_CID_SIZE;
-    uint16_t cid;
-    memcpy(&cid, cid_ptr, sizeof(cid));
-    uint8_t expected = calc_crc8(buf + 1, BKEL_HDR_SIZE + (size_t)hdr.dlc + BKEL_CID_SIZE);
-    uint8_t got      = *crc_ptr;
-
-	// resync
-    if (expected != got) {
-        *consumed = 1;
-        return PARSE_INVALID;
-    }
-
-    handle_frame(hdr.sid, hdr.type, payload, hdr.dlc, cid);
-
-    *consumed = frame_len;
-    return PARSE_OK;
 }
 

@@ -61,6 +61,7 @@ typedef enum {
 	PARSE_INVALID
 }BKEL_PARSE_RESULT_e;
 
+#pragma pack(push,1)
 typedef struct {
     uint8_t  sid;
     uint8_t  type;
@@ -68,6 +69,7 @@ typedef struct {
     uint8_t  payload[16];
     uint16_t cid;
 } BKEL_Common_Packet_t;
+#pragma pack(pop)
 
 static BKEL_Common_Packet_t parsed_packet;
 
@@ -80,6 +82,7 @@ EXTERN size_t build_frame( uint8_t *out_buf,
 
 EXTERN void parse_packet(uint8_t *buf, size_t *len);
 
+EXTERN void handle_frame_Test(void);
 
 
 #endif /* ASW_INC_BKEL_APP_PROTOCOL_H_ */
