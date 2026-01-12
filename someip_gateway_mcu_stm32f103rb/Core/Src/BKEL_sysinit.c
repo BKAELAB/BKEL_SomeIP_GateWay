@@ -331,9 +331,13 @@ static void BKEL_USART2_DMA_Init(void)
     PAN_USART2_CR3 |= (1 << 6);		// DMAR
     PAN_USART2_CR1 |= (1 << 13);	// UE
 
-    // NVIC 인터럽트
-    // USART2: IRQ 38 -> 38 : ISER1 6번
-    PAN_NVIC_ISER1 |= (0x01 << 6);
+    // USART2 (IDLE IT)
+    HAL_NVIC_SetPriority(USART2_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(USART2_IRQn);
+
+    // DMA1 Channel6 (USART2 RX DMA IT)
+    HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
 }
 
 

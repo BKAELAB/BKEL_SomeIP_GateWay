@@ -9,13 +9,14 @@
 #define INC_BKEL_EXTERNS_H_
 
 #include "BKEL_typedef.h"
-#include "queue.h"
+#include "stream_buffer.h"
 
 /* Externs */
 EXTERN hADC_t  hadc1;
 EXTERN hUART_t huart2;
 
-EXTERN QueueHandle_t hQueue;
+
+EXTERN StreamBufferHandle_t rxStream;
 EXTERN hTASK_t hSendAdvertiseTask;
 EXTERN hTASK_t hCommandCustomerTask;
 EXTERN hTASK_t hSendDataTask;

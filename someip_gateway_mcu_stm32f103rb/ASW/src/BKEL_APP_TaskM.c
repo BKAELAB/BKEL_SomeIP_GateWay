@@ -15,7 +15,6 @@
 /* LOCAL VARS */
 static StaticStreamBuffer_t rxStreamCtrl;
 static uint8_t rxStreamStorage[RX_STREAM_SIZE];
-static StreamBufferHandle_t rxStream;
 
 static StackType_t sendPeriodAdvertiseStack[BKEL_TASK_STACK_SIZE_MAX];
 static StaticTask_t sendPeriodAdvertiseTCB;
@@ -63,35 +62,9 @@ void f_sendPeriodAdvertiseTask(void)
 {
 	for (;;)
 	{
-
-
-
-#if USE_FEATURE_TEST	// Test Code Here
-		AppPwmTest();	// For PWM Test Code.
-		AppService_SendAdvertise();     // 메뉴판 송신
-		BKEL_SPI2_Loopback(); // SPI Loopback Test
-		handle_frame_Test(); // Handle Frame Test
-
-		/* GPIO_read/write/toggle Test */
-		led.Pin_Channel = GPIOA;
-		led.Pin_Number = (1U << 5);
-		pinTest = BKEL_read_pin(&led);
-		BKEL_write_pin(&led, BKEL_GPIO_U_RESET);
-		pinTest = BKEL_read_pin(&led);
-		printf("[state]= %d\r\n", pinTest);
-		BKEL_write_pin(&led, BKEL_GPIO_U_SET);
-		pinTest = BKEL_read_pin(&led);
-		printf("[state]= %d\r\n", pinTest);
-		BKEL_toggle_pin(&led);
-
-		for(int i = 0; i < (ADC_DMA_BUF_LEN / 2); i++) {
-			adc_pc4[i] = adc_dma_buf[i * 2];
-			adc_pc5[i] = adc_dma_buf[i * 2 + 1];
-		}
-
-#endif
-
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
+
+		AppService_SendAdvertise();
 	}
 }
 
@@ -183,8 +156,6 @@ void f_RPCTask(void)
 /* RTOS TASK INIT */
 void rtos_taskinit(void)
 {
-	BaseType_t state;
-
 	rxStream = xStreamBufferCreateStatic(
 	        RX_STREAM_SIZE,
 	        1,                    // trigger level (1Byte)
