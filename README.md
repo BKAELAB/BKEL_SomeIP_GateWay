@@ -8,7 +8,10 @@
   2. [Gateway Bridge APP](https://github.com/BKAELAB/BKEL_SomeIP_GateWay/tree/raspiapp) : move to gateway branch
 ## Communication Concept
   1. CLIENT accept to Well-Known IP (Ref. DDS)
-  2. MCU Send ALL Service ID&Info via Gateway
+  2. CLIENT can see all service information because MCU Send ALL Service ID&Info via Gateway periodcally
+  3. MCU send message to GateWay by uart
+  4. GateWay send message to client by tls(tcp)
+  5. all packet is consist of our custom protocol (simiral SOME/IP)
 
 ## Features
   1. RPC (Remote Procedure Call)
