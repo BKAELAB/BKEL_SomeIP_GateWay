@@ -8,6 +8,7 @@
 #include "main.h"
 #include "stream_buffer.h"
 #include "BKEL_APP_protocol.h"
+#include "BKEL_APP_rpc.h"
 
 /* Defines */
 #define RX_STREAM_SIZE   512
@@ -64,7 +65,8 @@ void f_sendPeriodAdvertiseTask(void)
 	{
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
 
-		AppService_SendAdvertise();
+//		AppService_SendAdvertise();
+		RPC_Test();
 	}
 }
 
@@ -149,6 +151,13 @@ void f_RPCTask(void)
 
         BKEL_Common_Packet_t *packet = (BKEL_Common_Packet_t *)notifiedValue;
 
+        switch ((BKEL_SID_t)packet->sid) {
+          case SID_LED_CONTROL: rpc_ld2_control(packet); break;
+          case SID_MCU_RESET: rpc_mcu_reset(packet); break;
+          case SID_SPI_READ: rpc_spi_read(packet); break;
+          case SID_PWM_SETOUT: rpc_pwm_setout(packet); break;
+          default: break;
+        }
 	}
 }
 

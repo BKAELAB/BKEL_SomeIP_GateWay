@@ -315,3 +315,57 @@ void handle_frame_Test(void)
     printf("--- [Handle Frame Test] Finish ---\r\n");
 }
 
+void RPC_Test(void)
+{
+	printf("\r\n--- [RPC Task Test] Start ---\r\n");
+
+//	/* LED Test */
+//	uint8_t led_payload[3] = {0x00, 0x01, 0x02}; // 0x01: LD2 OFF
+//	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
+//	handle_frame(0x10, 0x01, &led_payload[0], 1, 100);	//sid, type, payload, dlc, cid
+//	vTaskDelay(pdMS_TO_TICKS(500));
+//
+//	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
+//	handle_frame(0x10, 0x01, &led_payload[1], 1, 101);	//sid, type, payload, dlc, cid
+//	vTaskDelay(pdMS_TO_TICKS(500));
+//	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
+//	handle_frame(0x10, 0x01, &led_payload[2], 1, 102);	//sid, type, payload, dlc, cid
+//	vTaskDelay(pdMS_TO_TICKS(500));
+
+//	/* MCU Test */
+//	uint8_t mcu_payload[1] = {0x01};
+//	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
+//	handle_frame(0x11, 0x01, mcu_payload, 1, 200);	//sid, type, payload, dlc, cid
+
+	/* SPI Test */
+	// Write
+	uint8_t spi_write_payload[5] = {
+			SPI_OPCODE_WRITE,
+			0x00,
+			0x0A,
+			0xB0,
+			0x51
+	};
+	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
+	handle_frame(0x12, 0x01, spi_write_payload, 5, 302);	//sid, type, payload, dlc, cid
+
+	// Read
+	uint8_t spi_read_payload[5] = {
+			SPI_OPCODE_READ,
+			0x00,
+			0x00,
+			0x00,
+			0x00
+	};
+	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
+	handle_frame(0x12, 0x01, spi_read_payload, 5, 301);	//sid, type, payload, dlc, cid
+
+
+//
+//	/* PWM Test */
+//	uint8_t normal_payload[2] = {50, 100};
+//	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
+//	handle_frame(0x13, 0x02, normal_payload, 2, 123);	//sid, type, payload, dlc, cid
+}
+
+
