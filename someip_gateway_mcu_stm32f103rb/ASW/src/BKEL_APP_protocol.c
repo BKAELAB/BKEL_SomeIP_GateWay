@@ -318,24 +318,23 @@ void handle_frame_Test(void)
 void RPC_Test(void)
 {
 	printf("\r\n--- [RPC Task Test] Start ---\r\n");
+	//sid, type, payload, dlc, cid
+	/* LED Test */
+	uint8_t led_payload[3] = {0x00, 0x01, 0x02}; // 0x01: LD2 OFF/ ON/ TOGGLE
+	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
+	handle_frame(0x10, 0x01, &led_payload[0], 1, 100);
+	vTaskDelay(pdMS_TO_TICKS(500));
 
-//	/* LED Test */
-//	uint8_t led_payload[3] = {0x00, 0x01, 0x02}; // 0x01: LD2 OFF
-//	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
-//	handle_frame(0x10, 0x01, &led_payload[0], 1, 100);	//sid, type, payload, dlc, cid
-//	vTaskDelay(pdMS_TO_TICKS(500));
-//
-//	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
-//	handle_frame(0x10, 0x01, &led_payload[1], 1, 101);	//sid, type, payload, dlc, cid
-//	vTaskDelay(pdMS_TO_TICKS(500));
-//	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
-//	handle_frame(0x10, 0x01, &led_payload[2], 1, 102);	//sid, type, payload, dlc, cid
-//	vTaskDelay(pdMS_TO_TICKS(500));
+	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
+	handle_frame(0x10, 0x01, &led_payload[1], 1, 101);
+	vTaskDelay(pdMS_TO_TICKS(500));
+	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
+	handle_frame(0x10, 0x01, &led_payload[2], 1, 102);
 
-//	/* MCU Test */
-//	uint8_t mcu_payload[1] = {0x01};
-//	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
-//	handle_frame(0x11, 0x01, mcu_payload, 1, 200);	//sid, type, payload, dlc, cid
+	/* MCU Test */
+	uint8_t mcu_payload[1] = {0x01};
+	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
+	handle_frame(0x11, 0x01, mcu_payload, 1, 200);
 
 	/* SPI Test */
 	// Write
@@ -347,7 +346,7 @@ void RPC_Test(void)
 			0x51
 	};
 	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
-	handle_frame(0x12, 0x01, spi_write_payload, 5, 302);	//sid, type, payload, dlc, cid
+	handle_frame(0x12, 0x01, spi_write_payload, 5, 302);
 
 	// Read
 	uint8_t spi_read_payload[5] = {
@@ -358,14 +357,14 @@ void RPC_Test(void)
 			0x00
 	};
 	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
-	handle_frame(0x12, 0x01, spi_read_payload, 5, 301);	//sid, type, payload, dlc, cid
+	handle_frame(0x12, 0x01, spi_read_payload, 5, 301);
 
 
-//
-//	/* PWM Test */
-//	uint8_t normal_payload[2] = {50, 100};
-//	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
-//	handle_frame(0x13, 0x02, normal_payload, 2, 123);	//sid, type, payload, dlc, cid
+
+	/* PWM Test */
+	uint8_t pwm_payload[2] = {75, 100};
+	memset(&parsed_packet, 0, sizeof(BKEL_Common_Packet_t));
+	handle_frame(0x13, 0x02, pwm_payload, 2, 123);
 }
 
 

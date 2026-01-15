@@ -65,7 +65,9 @@ void f_sendPeriodAdvertiseTask(void)
 	{
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
 
-//		AppService_SendAdvertise();
+		AppService_SendAdvertise();
+
+		/*RPC Test Code*/
 		RPC_Test();
 	}
 }
@@ -152,10 +154,10 @@ void f_RPCTask(void)
         BKEL_Common_Packet_t *packet = (BKEL_Common_Packet_t *)notifiedValue;
 
         switch ((BKEL_SID_t)packet->sid) {
-          case SID_LED_CONTROL: rpc_ld2_control(packet); break;
-          case SID_MCU_RESET: rpc_mcu_reset(packet); break;
-          case SID_SPI_READ: rpc_spi_read(packet); break;
-          case SID_PWM_SETOUT: rpc_pwm_setout(packet); break;
+          case SID_LED_CONTROL: BKEL_RPC_LD2_Control(packet); break;
+          case SID_MCU_RESET: BKEL_RPC_MCU_Reset(packet); break;
+          case SID_SPI_READ: BKEL_RPC_SPI_Read(packet); break;
+          case SID_PWM_SETOUT: BKEL_RPC_PWM_Setout(packet); break;
           default: break;
         }
 	}
