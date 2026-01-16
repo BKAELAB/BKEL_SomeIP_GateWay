@@ -11,6 +11,9 @@
 
 /* Defines */
 #define RX_STREAM_SIZE   512
+/* 테스트를 위한 임시 에러 코드 및 상태 정의 */
+#define STATUS_OK    0x0000
+#define STATUS_ERROR 0x0001
 
 /* LOCAL VARS */
 static StaticStreamBuffer_t rxStreamCtrl;
