@@ -83,6 +83,6 @@ EXTERN size_t build_frame( uint8_t *out_buf,
 EXTERN void parse_packet(uint8_t *buf, size_t *len);
 
 EXTERN void handle_frame_Test(void);
-
+EXTERN void RPC_Test(void);
 
 #endif /* ASW_INC_BKEL_APP_PROTOCOL_H_ */
