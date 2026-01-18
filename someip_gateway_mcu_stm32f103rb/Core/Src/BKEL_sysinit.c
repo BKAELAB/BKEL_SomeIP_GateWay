@@ -155,6 +155,8 @@ static void BKEL_SPI_Init(void);
 // 26.01.04 Pan
 static void BKEL_USART2_DMA_Init(void);
 
+static void BKEL_Diag_Task_Init(void);
+
 #ifdef USE_UART_DEBUG
 int _write(int file, char *ptr, int len)
 {
@@ -173,6 +175,7 @@ void system_init(void)
 	BKEL_ADC1_DMA_Init();
 	BKEL_PWM_Init();
 	BKEL_SPI_Init();
+	BKEL_Diag_Task_Init();
 }
 
 
@@ -508,4 +511,9 @@ static void BKEL_PWM_Init(void)
 
 	// 5. Counter Enable
 	TIM3->CR1 |= TIM_CR1_CEN;
+}
+
+static void BKEL_Diag_Task_Init(void) {
+    xTaskCreate(StartDiagnosticTask, "DiagTask", 256, NULL, osPriorityNormal, &xDiagTaskHandle);
+    xTaskCreate(StartHeartbeatTask, "Heartbeat", 128, NULL, osPriorityLow, NULL);
 }

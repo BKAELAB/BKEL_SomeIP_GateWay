@@ -6,66 +6,57 @@
  */
 
 #include "main.h"
-#include <BKEL_BSW_diagnostic.h>
+#include <stdio.h>
+#include <string.h>
 
-void StartHandleTask(void *argument) {
-    CommandMsg_t receivedCmd;
-    DiagResult_t diagResult;
+extern UART_HandleTypeDef huart2;
+TaskHandle_t xDiagTaskHandle = NULL;
+
+// 1. LED 상태를 추적할 변수 (하드웨어 읽기 대신 사용)
+static uint8_t software_led_state = 0;
+
+// 1. 하트비트 태스크 (상태를 직접 관리)
+void StartHeartbeatTask(void *argument) {
+    for(;;) {
+        // 소프트웨어 변수 토글 (0 -> 1 -> 0 ...)
+        software_led_state = !software_led_state;
+
+        // 변수 값에 따라 LED 물리 제어
+        if (software_led_state) {
+        	BKEL_LD2_On();
+        } else {
+        	BKEL_LD2_Off();
+        }
+
+        // 진단 태스크로 현재 상태(0 또는 1) 전송
+        if (xDiagTaskHandle != NULL) {
+            xTaskNotify(xDiagTaskHandle, (uint32_t)software_led_state, eSetValueWithOverwrite);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
+// 2. 진단 태스크 (안전한 전송 방식 사용)
+void StartDiagnosticTask(void *argument) {
+    uint32_t rxVal;
+    char tx_buffer[128];
 
     for(;;) {
-        // [WAKE-UP] 명령어가 들어올 때까지 대기
-        if (osMessageQueueGet(commandQueueHandle, &receivedCmd, NULL, osWaitForever) == osOK) {
+        // 모든 비트를 클리어하며 대기
+        if (xTaskNotifyWait(0, 0xFFFFFFFF, &rxVal, portMAX_DELAY) == pdTRUE) {
 
-            // 1. 명령어 분기 (Command Branch)
-            switch(receivedCmd.cmdID) {
-                case CMD_MOTOR_START:
-                    // PC4(CH14)에 연결
-                    diagResult.diagID = 0x14; // Channel 14 표시
-                    diagResult.value = (float)adc_dma_buf[0] * (3.3f / 4095.0f); // 전압 변환
-
-                    // 진단 결과 판정 (예: 2.5V 이상이면 과전류 에러)
-                    diagResult.errorCode = (diagResult.value > 2.5f) ? 0x01 : 0x00;
-                    break;
-
-                case CMD_BATTERY_CHECK:
-                    // PC5(CH15)에 연결
-                    diagResult.diagID = 0x15; // Channel 15 표시
-                    diagResult.value = (float)adc_dma_buf[1] * (3.3f / 4095.0f) * 5.0f; // 분압비 고려
-
-                    // 진단 결과 판정 (예: 10V 미만이면 저전압 에러)
-                    diagResult.errorCode = (diagResult.value < 10.0f) ? 0x02 : 0x00;
-                    break;
-
-                default:
-                    diagResult.diagID = 0x00;
-                    diagResult.errorCode = 0xFFFF;
-                    diagResult.value = 0.0f;
-                    break;
+            // 수신된 값 확인을 위해 로그 구성
+            if (rxVal == 1) {
+                snprintf(tx_buffer, sizeof(tx_buffer), ">>> STATUS: LED IS ON\r\n");
+            } else {
+                snprintf(tx_buffer, sizeof(tx_buffer), ">>> STATUS: LED IS OFF\r\n");
             }
 
-            // 2. 진단 결과를 전송 태스크로 전달 (Toss)
-            osMessageQueuePut(diagQueueHandle, &diagResult, 0, 0);
+            BKEL_UART_Tx((uint8_t*)tx_buffer, strlen(tx_buffer));
         }
     }
 }
 
-void StartDiagnosticDataSendTask(void *argument) {
-    DiagResult_t res;
-    char txBuffer[64];
 
-    for(;;) {
-        // [WAKE-UP] 진단 결과가 들어올 때까지 대기
-        if (osMessageQueueGet(diagQueueHandle, &res, NULL, osWaitForever) == osOK) {
 
-            // 1. 전송 데이터 포맷팅
-            int len = snprintf(txBuffer, sizeof(txBuffer),
-                               "[DIAG] CH:%d, ERR:%d, VAL:%.2f\r\n",
-                               res.diagID, res.errorCode, res.value);
-
-            // 2. USART2를 이용한 실제 전송
-            if (len > 0) {
-            	BKEL_UART_Tx((uint8_t*)txBuffer, len);
-            }
-        }
-    }
-}

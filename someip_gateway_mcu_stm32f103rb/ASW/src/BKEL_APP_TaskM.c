@@ -8,12 +8,10 @@
 #include "main.h"
 #include "stream_buffer.h"
 #include "BKEL_APP_protocol.h"
+#include "BKEL_APP_rpc.h"
 
 /* Defines */
 #define RX_STREAM_SIZE   512
-/* 테스트를 위한 임시 에러 코드 및 상태 정의 */
-#define STATUS_OK    0x0000
-#define STATUS_ERROR 0x0001
 
 /* LOCAL VARS */
 static StaticStreamBuffer_t rxStreamCtrl;
@@ -68,6 +66,9 @@ void f_sendPeriodAdvertiseTask(void)
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
 
 		AppService_SendAdvertise();
+
+		/*RPC Test Code*/
+		RPC_Test();
 	}
 }
 
@@ -152,6 +153,13 @@ void f_RPCTask(void)
 
         BKEL_Common_Packet_t *packet = (BKEL_Common_Packet_t *)notifiedValue;
 
+        switch ((BKEL_SID_t)packet->sid) {
+          case SID_LED_CONTROL: BKEL_RPC_LD2_Control(packet); break;
+          case SID_MCU_RESET: BKEL_RPC_MCU_Reset(packet); break;
+          case SID_SPI_READ: BKEL_RPC_SPI_Read(packet); break;
+          case SID_PWM_SETOUT: BKEL_RPC_PWM_Setout(packet); break;
+          default: break;
+        }
 	}
 }
 
