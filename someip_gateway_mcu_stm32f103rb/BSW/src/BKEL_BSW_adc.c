@@ -64,11 +64,3 @@ uint32_t BKEL_BSW_ADC_GetValue(void)
 	//vol2. 그냥 최신 채널 하나 반환
 	//return (uint32_t)adc_dma_buf[lastIdx];
 }
-/* ADC getValue test */
-void getValueTest(void)
-{
-	uint32_t getVal = BKEL_BSW_ADC_GetValue();
-	printf("ADC_ch14: %u, ADC_ch15: %u\r\n",
-				    (uint16_t)(getVal >> 16U),
-					(uint16_t)(getVal & 0xFFFFU));
-}

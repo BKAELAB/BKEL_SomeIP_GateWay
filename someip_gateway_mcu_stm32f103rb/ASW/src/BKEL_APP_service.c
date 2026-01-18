@@ -54,7 +54,7 @@ void AppService_SendAdvertise(void)
         if (packet_len == 0)
             continue;
 
-        BKEL_UART_Tx(&tx_buf, packet_len);
+        BKEL_UART_Tx(tx_buf, (uint16_t)packet_len);
     }
 }
 

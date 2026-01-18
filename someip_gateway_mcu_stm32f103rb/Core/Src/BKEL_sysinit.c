@@ -10,7 +10,8 @@
 volatile uint16_t adc_dma_buf[ADC_DMA_BUF_LEN];		// 프로그램 코드 외부에 있는 어떤 요인에 의해 변경될 수 있음
 
 // Panho 26.01.05
-volatile uint8_t uart_rx_dma_buf[UART_RX_BUF_SIZE];
+volatile uint8_t uart1_rx_dma_buf[UART_RX_BUF_SIZE];
+volatile uint8_t uart2_rx_dma_buf[UART_RX_BUF_SIZE];
 
 /* DEFINES For CLOCK */
 /* FLASH 설정 */
@@ -153,6 +154,7 @@ static void BKEL_GPIO_Init(void);
 static void BKEL_SPI_Init(void);
 
 // 26.01.04 Pan
+static void BKEL_USART1_DMA_Init(void);
 static void BKEL_USART2_DMA_Init(void);
 
 #ifdef USE_UART_DEBUG
@@ -169,6 +171,7 @@ void system_init(void)
 	HAL_Init();
 	BKEL_CLK_Init();
 	BKEL_GPIO_Init();
+	BKEL_USART1_DMA_Init();
 	BKEL_USART2_DMA_Init();
 	BKEL_ADC1_DMA_Init();
 	BKEL_PWM_Init();
@@ -294,6 +297,68 @@ static void BKEL_ADC1_DMA_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void BKEL_USART1_DMA_Init(void)
+{
+    /* 1. Clock Enable */
+    PAN_RCC_APB2ENR |= (1 << 14);   // USART1EN
+    PAN_RCC_APB2ENR |= (1 << 2);    // IOPAEN
+    PAN_RCC_AHBENR  |= (1 << 0);    // DMA1EN
+
+    /* 2. GPIO 설정
+     * PA9  (TX) : AF Push-Pull, 50MHz
+     * PA10 (RX) : Floating Input
+     */
+    PAN_GPIOA_CRH &= ~((0x0F << 4) | (0x0F << 8)); // PA9, PA10 clear
+    PAN_GPIOA_CRH |=  (0x0B << 4);  // PA9  -> 1011 : AF PP, 50MHz
+    PAN_GPIOA_CRH |=  (0x04 << 8);  // PA10 -> 0100 : Floating input
+
+    /* 3. Baudrate 설정
+     *
+     * PCLK2 = 72MHz
+     * Baud = 115200
+     * USARTDIV = 72,000,000 / (16 * 115200) = 39.0625
+     * BRR = 0x271
+     */
+    PAN_USART1_BRR = 0x271;
+
+    /* 4. DMA RX 설정 (DMA1 Channel5) */
+    PAN_DMA1_CH5_CCR &= ~(1 << 0);   // DMA Disable
+
+    PAN_DMA1_CH5_CPAR  = (uint32_t)&PAN_USART1_DR;  // Peripheral addr
+    PAN_DMA1_CH5_CMAR  = (uint32_t)uart1_rx_dma_buf; // Memory addr
+    PAN_DMA1_CH5_CNDTR = 256;
+
+    /* MINC | CIRC | EN */
+    PAN_DMA1_CH5_CCR =
+        (1 << 7) |   // MINC
+        (1 << 5) |   // CIRC
+        (1 << 0);    // EN
+
+    /* 5. USART1 설정
+     * RE | TE | IDLEIE
+     */
+    PAN_USART1_CR1 |=
+        (1 << 4) |   // IDLEIE
+        (1 << 3) |   // TE
+        (1 << 2);    // RE
+
+    PAN_USART1_CR3 |= (1 << 6);   // DMAR
+    PAN_USART1_CR1 |= (1 << 13);  // UE
+
+    /* 6. NVIC 설정 */
+    HAL_NVIC_SetPriority(USART1_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(USART1_IRQn);
+
+    HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
+}
+
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -320,7 +385,7 @@ static void BKEL_USART2_DMA_Init(void)
 
     // DMA RX
     PAN_DMA1_CPAR  = (unsigned int)&PAN_USART2_DR;    // CPAR -> 데이터 가져올 곳 -> usart data register
-    PAN_DMA1_CMAR  = (unsigned int)uart_rx_dma_buf;   // CMAR -> 데이터 넣을 곳 -> 버퍼
+    PAN_DMA1_CMAR  = (unsigned int)uart2_rx_dma_buf;   // CMAR -> 데이터 넣을 곳 -> 버퍼
     PAN_DMA1_CNDTR = 256;                             // 버퍼 크기
 
     // MINC: 7, CIRC: 5, EN: 0

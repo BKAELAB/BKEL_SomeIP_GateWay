@@ -12,6 +12,7 @@
 #include <string.h>
 
 // Defines
+#define BKEL_SOF_SIZE	1U
 #define BKEL_HDR_SIZE 	4U
 #define BKEL_MAX_DLC	500U
 #define BKEL_CID_SIZE	2U
@@ -202,7 +203,7 @@ static BKEL_PARSE_RESULT_e parse_one_frame(const uint8_t *buf,
         return PARSE_INCOMPLETE;
 
     BKEL_Data_Frame_Header_t hdr;
-    memcpy(&hdr, buf, BKEL_HDR_SIZE);
+    memcpy(&hdr, buf+BKEL_SOF_SIZE, BKEL_HDR_SIZE);
 
     // dlc sanity check
     if (hdr.dlc > BKEL_MAX_DLC) {
@@ -211,17 +212,17 @@ static BKEL_PARSE_RESULT_e parse_one_frame(const uint8_t *buf,
     }
 
     // Calc Full Frame Length
-    size_t frame_len = BKEL_HDR_SIZE + (size_t)hdr.dlc + BKEL_CID_SIZE + BKEL_CRC_SIZE;
+    size_t frame_len = BKEL_SOF_SIZE + BKEL_HDR_SIZE + (size_t)hdr.dlc + BKEL_CID_SIZE + BKEL_CRC_SIZE;
     if (buf_len < frame_len)
         return PARSE_INCOMPLETE;
 
     // CRC Check [HDR + PAYLOAD + CID]
-    const uint8_t *payload = buf + BKEL_HDR_SIZE;
+    const uint8_t *payload = buf + BKEL_SOF_SIZE + BKEL_HDR_SIZE;
     const uint8_t *cid_ptr = payload + hdr.dlc;
     const uint8_t *crc_ptr = cid_ptr + BKEL_CID_SIZE;
     uint16_t cid;
     memcpy(&cid, cid_ptr, sizeof(cid));
-    uint8_t expected = calc_crc8(buf + 1, BKEL_HDR_SIZE + (size_t)hdr.dlc + BKEL_CID_SIZE);
+    uint8_t expected = calc_crc8(buf + BKEL_SOF_SIZE, BKEL_HDR_SIZE + (size_t)hdr.dlc + BKEL_CID_SIZE);
     uint8_t got      = *crc_ptr;
 
 	// resync

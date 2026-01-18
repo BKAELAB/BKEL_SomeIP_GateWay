@@ -12,8 +12,43 @@
 #include "BKEL_externs.h"
 #include "stream_buffer.h"
 
-volatile uint8_t uart_rx_flag = 0;
-volatile uint16_t uart_rx_len = 0;
+void USART1_IRQHandler(void)
+{
+    /* IDLE flag 확인 (SR bit4) */
+    if (PAN_USART1_SR & (1U << 4))
+    {
+        volatile uint32_t tmp;
+
+        /* IDLE flag clear sequence */
+        tmp = PAN_USART1_SR;
+        tmp = PAN_USART1_DR;
+        (void)tmp;
+
+        /* DMA RX 중단 */
+        DMA1_Channel5->CCR &= ~(1U << 0);
+
+        /* 수신된 데이터 길이 계산 */
+        uint16_t received_len = UART_RX_BUF_SIZE - DMA1_Channel5->CNDTR;
+
+        if (received_len > 0)
+        {
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+            xStreamBufferSendFromISR(
+                rxStream,
+                (void *)uart1_rx_dma_buf,
+                received_len,
+                &xHigherPriorityTaskWoken
+            );
+
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        }
+
+        /* DMA 재장전 */
+        DMA1_Channel5->CNDTR = UART_RX_BUF_SIZE;
+        DMA1_Channel5->CCR |= (1U << 0);
+    }
+}
 
 void USART2_IRQHandler(void)
 {
@@ -33,7 +68,7 @@ void USART2_IRQHandler(void)
             BaseType_t xHigherPriorityTaskWoken = pdFALSE;
             // 데이터를 스트림 버퍼로 복사 (생성자)
             xStreamBufferSendFromISR(rxStream,
-                                     (void *)uart_rx_dma_buf,
+                                     (void *)uart2_rx_dma_buf,
                                      received_len,
                                      &xHigherPriorityTaskWoken);
 
