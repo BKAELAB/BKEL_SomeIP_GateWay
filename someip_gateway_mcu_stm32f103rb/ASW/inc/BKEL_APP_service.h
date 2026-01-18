@@ -9,10 +9,8 @@
 #define INC_BKEL_UDIGNO_H_
 #include "main.h"
 
-#if USE_FEATURE_TEST
-	EXTERN void AppServiceTest();
-	void AppService_SendAdvertise(void);
-#endif
+
+void AppService_SendAdvertise(void);
 
 
 #endif /* INC_BKEL_UDIGNO_H_ */

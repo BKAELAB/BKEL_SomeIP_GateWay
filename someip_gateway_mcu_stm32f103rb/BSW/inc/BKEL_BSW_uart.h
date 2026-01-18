@@ -3,6 +3,7 @@
 #define __BKEL_UART_H__
 
 // includes
+#include <main.h>
 #include <stdint.h>
 
 // defines
@@ -49,6 +50,7 @@ extern volatile uint8_t uart_rx_dma_buf[UART_RX_BUF_SIZE]; // DMA rx 버퍼용
 // Functions
 extern void BKEL_UART_Tx(const uint8_t *buf, uint16_t buf_len);
 
+extern void uart_hex_dump(UART_HandleTypeDef *huart, const uint8_t *buf, size_t len);
 
 #endif // __BKEL_UART_H__
 ////////////////////////////////////////////////////////////////////////

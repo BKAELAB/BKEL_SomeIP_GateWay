@@ -19,8 +19,8 @@ typedef enum BKEL_GPIO_STATE {
 typedef struct BKEL_GPIO {
 	GPIO_TypeDef* Pin_Channel;
 	uint16_t	  Pin_Number;
-} BKEL_gpio_pin;
 
+} BKEL_gpio_pin;
 // Functions Prototype
 BKEL_GPIO_STATE_T BKEL_read_pin(BKEL_gpio_pin * gpiopin);
 void BKEL_write_pin(BKEL_gpio_pin * gpiopin, BKEL_GPIO_STATE_T pinstate);

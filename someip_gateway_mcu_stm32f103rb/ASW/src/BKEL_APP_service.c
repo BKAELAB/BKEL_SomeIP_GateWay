@@ -10,40 +10,24 @@
 #include "BKEL_BSW_uart.h"
 
 
-#if USE_FEATURE_TEST
-
-void uart_hex_dump(UART_HandleTypeDef *huart,
-                   const uint8_t *buf,
-                   size_t len)
-{
-    char line[8];  // "FF " + '\0'
-
-    for (size_t i = 0; i < len; i++)
-    {
-        int n = snprintf(line, sizeof(line), "%02X ", buf[i]);
-        BKEL_UART_Tx((uint8_t*)line, n);
-    }
-    BKEL_UART_Tx((uint8_t*)"\r\n", 2);
-}
-
 static const char *service_advertise_payload[] =
 {
-	"[SERVICE ADVERTISE START]\r\n",
+	"SOF",
 
-    "0x10 : RPC_LD2_Control\r\n",
-    "0x11 : RPC_MCU_Reset\r\n",
-    "0x12 : RPC_SPI_Read\r\n",
-    "0x13 : RPC_PWM_SetOut\r\n",
+    "0x10 : RPC_LD2_Control",
+    "0x11 : RPC_MCU_Reset",
+    "0x12 : RPC_SPI_Read",
+    "0x13 : RPC_PWM_SetOut",
 
-    "0x20 : DIAG_PWM_Output_Value\r\n",
-    "0x21 : DIAG_PWM_Input_Value\r\n",
-    "0x22 : DIAG_ADC1_GetValue\r\n",
-    "0x23 : DIAG_ADC2_GetValue\r\n",
-    "0x24 : DIAG_GPO_PinState\r\n",
-    "0x25 : DIAG_GPI_PinState\r\n",
-    "0x26 : DIAG_LD2_PinState\r\n",
+    "0x20 : DIAG_PWM_Output_Value",
+    "0x21 : DIAG_PWM_Input_Value",
+    "0x22 : DIAG_ADC1_GetValue",
+    "0x23 : DIAG_ADC2_GetValue",
+    "0x24 : DIAG_GPO_PinState",
+    "0x25 : DIAG_GPI_PinState",
+    "0x26 : DIAG_LD2_PinState",
 
-	"[SERVICE ADVERTISE END]\r\n"
+	"EOF"
 };
 
 
@@ -70,21 +54,7 @@ void AppService_SendAdvertise(void)
         if (packet_len == 0)
             continue;
 
-        uart_hex_dump(&huart2, tx_buf, packet_len);
+        BKEL_UART_Tx(&tx_buf, packet_len);
     }
 }
-//EXTERN void AppServiceTest()
-//{
-//	uint8_t out_buf[128];
-//	size_t out_buf_size = 128;
-//	uint8_t sid = SERVICE_ADVERTISE;
-//	uint8_t type = P_DATA_TYPE_CHAR;
-//	const char* payload = "Service List \r\n";
-//
-//	uint16_t payload_len = strlen(payload);
-//	uint16_t packet_size = build_frame(out_buf, out_buf_size, sid, type, (const uint8_t*)payload, payload_len);
-//
-//	uart_hex_dump(&huart2, (uint8_t*)out_buf, packet_size);
-//}
 
-#endif

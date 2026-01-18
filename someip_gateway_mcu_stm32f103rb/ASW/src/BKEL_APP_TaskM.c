@@ -9,6 +9,7 @@
 #include "stream_buffer.h"
 #include "BKEL_APP_protocol.h"
 #include "BKEL_APP_rpc.h"
+#include "BKEL_APP_sendDiagData.h"
 
 /* Defines */
 #define RX_STREAM_SIZE   512
@@ -28,7 +29,6 @@ static StaticTask_t RPCTCB;
 
 /* Function Prototypes */
 void rtos_taskinit(void);
-void app_serviceInit(void);
 
 // Tasks
 void f_sendPeriodAdvertiseTask(void);
@@ -41,9 +41,6 @@ void f_inittask(void)
 {
 	// Task Init
 	rtos_taskinit();
-
-	// APP Init
-	app_serviceInit();
 
 	vTaskDelete(NULL);
 	for(;;){
@@ -66,9 +63,6 @@ void f_sendPeriodAdvertiseTask(void)
 		vTaskDelay(pdMS_TO_TICKS(5000));	// 5s
 
 		AppService_SendAdvertise();
-
-		/*RPC Test Code*/
-		RPC_Test();
 	}
 }
 
@@ -128,8 +122,26 @@ void f_sendDataTask(void)
             portMAX_DELAY
         );
 
+/*
+ *  #define DIAG_PWM_OUTPUT_VALUE	(0x20U)
+	#define DIAG_PWM_INPUT_VALUE	(0x21U)
+	#define DIAG_ADC1_GET_VALUE		(0x22U)
+	#define DIAG_ADC2_GET_VALUE		(0x23U)
+	#define DIAG_GPO_PINSTATE		(0x24U)
+	#define DIAG_GPI_PINSTATE		(0x25U)
+	#define DIAG_LD2_PINSTATE		(0x26U)
+ */
         BKEL_Common_Packet_t *packet = (BKEL_Common_Packet_t *)notifiedValue;
-
+        switch (packet->sid) {
+			  case DIAG_PWM_OUTPUT_VALUE: AppSendDiagPWMOut(); break;
+			  case DIAG_PWM_INPUT_VALUE: AppSendDiagPWMIn(); break;
+			  case DIAG_ADC1_GET_VALUE: AppSendDiagADC1Val(); break;
+			  case DIAG_ADC2_GET_VALUE: AppSendDiagADC2Val(); break;
+			  case DIAG_GPO_PINSTATE: AppSendDiagGPOPinState(); break;
+			  case DIAG_GPI_PINSTATE: AppSendDiagGPIPinState(); break;
+			  case DIAG_LD2_PINSTATE: AppSendDiagLD2PinState(); break;
+          default: break;
+        }
 	}
 }
 
@@ -215,10 +227,5 @@ void rtos_taskinit(void)
 		RPCStack,
 	    &RPCTCB
 	);
-}
-
-void app_serviceInit(void)
-{
-
 }
 

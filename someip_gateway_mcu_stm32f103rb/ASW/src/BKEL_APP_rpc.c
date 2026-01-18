@@ -7,6 +7,8 @@
 #include "BKEL_APP_rpc.h"
 #include "BKEL_BSW_led.h"
 #include "BKEL_APP_protocol.h"
+#include "BKEL_BSW_pwm.h"
+#include "BKEL_BSW_spi.h"
 
 // sid 0x10
 void BKEL_RPC_LD2_Control(BKEL_Common_Packet_t *packet)

@@ -9,7 +9,7 @@
 #include "BKEL_BSW_gpio.h"
 #include "BKEL_typedef.h"
 
-static const BKEL_gpio_pin led = {
+static BKEL_gpio_pin led = {
 	.Pin_Channel = LD2_GPIO_Port,
 	.Pin_Number  = LD2_Pin
 };
