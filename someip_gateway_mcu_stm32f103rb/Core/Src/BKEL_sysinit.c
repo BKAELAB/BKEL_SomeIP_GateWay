@@ -7,7 +7,7 @@
 #include "main.h"
 
 /* Variables */
-volatile uint16_t adc_dma_buf[ADC_DMA_BUF_LEN];		// 프로그램 코드 외부에 있는 어떤 요인에 의해 변경될 수 있음
+//volatile uint16_t adc_dma_buf[ADC_DMA_BUF_LEN];		// 프로그램 코드 외부에 있는 어떤 요인에 의해 변경될 수 있음
 
 // Panho 26.01.05
 volatile uint8_t uart1_rx_dma_buf[UART_RX_BUF_SIZE];
@@ -43,7 +43,6 @@ volatile uint8_t uart2_rx_dma_buf[UART_RX_BUF_SIZE];
 #define RCC_CFGR_SW_CLEAR         	(0x3U << 0)
 #define RCC_CFGR_SWS_CLEAR        	(0x3U << 2)
 
-
 /* DEFINES For ADC & DMA */
 
 /* RCC */
@@ -65,6 +64,15 @@ volatile uint8_t uart2_rx_dma_buf[UART_RX_BUF_SIZE];
 #define DMA_MINC_EN               	(1U << 7)
 #define DMA_PSIZE_16BIT           	(1U << 8)
 #define DMA_MSIZE_16BIT           	(1U << 10)
+
+/* DMA1 Channel1 Interrupt Flag Clear*/
+#define DMA1_CH1_CLR_ALL  ( DMA_IFCR_CGIF1  | \
+                            DMA_IFCR_CTCIF1 | \
+                            DMA_IFCR_CHTIF1 | \
+                            DMA_IFCR_CTEIF1 )
+
+/* DMA1 Channel1 Interrupt Enable */
+#define DMA1_CH1_INT_EN   ( DMA_CCR_HTIE | DMA_CCR_TCIE )
 
 /* ADC  */
 /* DR */
@@ -255,7 +263,18 @@ static void BKEL_ADC1_DMA_Init(void)
     DMA1_Channel1->CCR |= DMA_PSIZE_16BIT;  		// PSIZE: 16-bit
     DMA1_Channel1->CCR |= DMA_MSIZE_16BIT;		// MSIZE: 16-bit
 
+    /* Clear DMA Interrupt Flags */
+    DMA1->IFCR = DMA1_CH1_CLR_ALL;
+
+    /* DMA HT / TC Interrupt Enable */
+    DMA1_Channel1->CCR |= DMA1_CH1_INT_EN;
+
     DMA1_Channel1->CCR |= DMA_EN;  			// DMA Enable
+
+    /* ===== NVIC 설정 (DMA1 Channel1) ===== */
+    NVIC_ClearPendingIRQ(DMA1_Channel1_IRQn);
+    NVIC_SetPriority(DMA1_Channel1_IRQn, 2);
+    NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
     /* ADC 기본 설정 */
     ADC1->CR1 = 0;
