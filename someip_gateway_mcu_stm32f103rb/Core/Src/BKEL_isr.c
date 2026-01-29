@@ -83,12 +83,13 @@ void USART2_IRQHandler(void)
     }
 }
 
+//  CNDTR이 4->2(HT), 2->0(TC)이 될 때 호출됨
 void DMA1_Channel1_IRQHandler(void)
 {
     /* Half Transfer */
     if (DMA1->ISR & DMA_ISR_HTIF1)
     {
-        DMA1->IFCR = DMA_IFCR_CHTIF1;
+        DMA1->IFCR = DMA_IFCR_CHTIF1;	// 하드웨어 플래그를 클리어 (안 하면 무한 인터럽트 발생)
 
         adc_frame_idx   = 0;
         adc_frame_ready = 1;

@@ -264,16 +264,16 @@ static void BKEL_ADC1_DMA_Init(void)
     DMA1_Channel1->CCR |= DMA_MSIZE_16BIT;		// MSIZE: 16-bit
 
     /* Clear DMA Interrupt Flags */
-    DMA1->IFCR = DMA1_CH1_CLR_ALL;
+    DMA1->IFCR = DMA1_CH1_CLR_ALL;		// 기존 플래그 클리어
 
     /* DMA HT / TC Interrupt Enable */
-    DMA1_Channel1->CCR |= DMA1_CH1_INT_EN;
+    DMA1_Channel1->CCR |= DMA1_CH1_INT_EN;		// // HT, TC 인터럽트 연결
 
     DMA1_Channel1->CCR |= DMA_EN;  			// DMA Enable
 
     /* ===== NVIC 설정 (DMA1 Channel1) ===== */
     NVIC_ClearPendingIRQ(DMA1_Channel1_IRQn);
-    NVIC_SetPriority(DMA1_Channel1_IRQn, 2);
+    NVIC_SetPriority(DMA1_Channel1_IRQn, 5);
     NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
     /* ADC 기본 설정 */
