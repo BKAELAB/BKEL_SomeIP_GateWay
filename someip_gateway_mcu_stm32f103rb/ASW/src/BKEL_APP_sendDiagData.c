@@ -56,7 +56,7 @@ void AppSendDiagADC1Val()
 	uint8_t out_buf[64];
 	uint32_t u32AdcVal = BKEL_BSW_ADC_GetValue();
 	uint8_t payload[2];
-	uint16_t u16AdcVal = ((u32AdcVal >> 16U) & 0xFF);
+	uint16_t u16AdcVal = ((u32AdcVal >> 16U) & 0xFFFF);
 	memcpy(payload, &u16AdcVal, 2U);
 
 	size_t frame_len = build_frame(out_buf, 64U, (uint8_t)0x22, (uint8_t)0x02, payload, (uint16_t)2U);
@@ -68,7 +68,7 @@ void AppSendDiagADC2Val()
 	uint8_t out_buf[64];
 	uint32_t u32AdcVal = BKEL_BSW_ADC_GetValue();
 	uint8_t payload[2];
-	uint16_t u16AdcVal = ((u32AdcVal) & 0xFF);
+	uint16_t u16AdcVal = ((u32AdcVal) & 0xFFFF);
 	memcpy(payload, &u16AdcVal, 2U);
 
 	size_t frame_len = build_frame(out_buf, 64U, (uint8_t)0x22, (uint8_t)0x02, payload, (uint16_t)2U);

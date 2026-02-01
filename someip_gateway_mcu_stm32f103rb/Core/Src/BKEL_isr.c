@@ -7,6 +7,7 @@
 
 #include <BKEL_BSW_uart.h>
 #include "BKEL_typedef.h"
+#include "BKEL_BSW_adc.h"
 
 // 26.01.05 Write by Panho
 #include "BKEL_externs.h"
@@ -82,6 +83,27 @@ void USART2_IRQHandler(void)
     }
 }
 
+//  CNDTR이 4->2(HT), 2->0(TC)이 될 때 호출됨
+void DMA1_Channel1_IRQHandler(void)
+{
+    /* Half Transfer */
+    if (DMA1->ISR & DMA_ISR_HTIF1)
+    {
+        DMA1->IFCR = DMA_IFCR_CHTIF1;	// 하드웨어 플래그를 클리어 (안 하면 무한 인터럽트 발생)
+
+        adc_frame_idx   = 0;
+        adc_frame_ready = 1;
+    }
+
+    /* Transfer Complete */
+    if (DMA1->ISR & DMA_ISR_TCIF1)
+    {
+        DMA1->IFCR = DMA_IFCR_CTCIF1;
+
+        adc_frame_idx   = 1;
+        adc_frame_ready = 1;
+    }
+}
 
 // ISR for GPIO EXTI 15:10
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
