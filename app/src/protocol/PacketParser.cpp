@@ -1,5 +1,8 @@
 #include <protocol/PacketParser.hpp>
 #include "main.h"
+#include <iostream>
+#include <string>
+
 
 void PacketParser::push(const uint8_t* data, size_t len)
 {
@@ -7,8 +10,10 @@ void PacketParser::push(const uint8_t* data, size_t len)
     parse();
 }
 
+
 void PacketParser::parse()
 {
+
     while (true)
     {
         if (rxBuffer.size() < BKEL_SOF_SIZE + BKEL_HDR_SIZE)
@@ -57,8 +62,8 @@ void PacketParser::parse()
 
         if (expectedCrc != *crcPtr)
         {
-            rxBuffer.erase(rxBuffer.begin());
-            continue;
+             rxBuffer.erase(rxBuffer.begin());
+             continue;
         }
 
         /* === 정상 프레임 === */
@@ -68,7 +73,7 @@ void PacketParser::parse()
         frame.dlc  = hdr.dlc;
         frame.cid  = cid;
         frame.payload.assign(payload, payload + hdr.dlc);
-
+        
         onFrame(frame);
 
         rxBuffer.erase(rxBuffer.begin(),
@@ -90,6 +95,7 @@ void PacketParser::onFrame(const BKEL_Frame& frame)
         printf(" PAYLOAD: ");
         for (auto b : frame.payload)
             printf("%02X ", b);
-        printf("\n");
+        printf("\n------------------------------------------\n");
+        //printf("\n");
     }
 }
