@@ -1,4 +1,4 @@
-#include "TcpTransport.h"
+#include "transport/TcpTransport.hpp"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -16,7 +16,7 @@ TcpTransport::~TcpTransport() { Close(); }
 TcpTransport::TcpTransport(TcpTransport&& other) noexcept {
     fd_ = other.fd_;
     is_listen_ = other.is_listen_;
-    other.fd = -1;
+    other.fd_ = -1; // 오타 수정
     other.is_listen_ = false;
 }
 
@@ -30,7 +30,8 @@ TcpTransport& TcpTransport::operator=(TcpTransport&& other) noexcept {
     return *this;
 }
 
-bool TcpTransport::Close() {
+//bool에서 void로
+void TcpTransport::Close() {
     if (fd_ >= 0) {
         ::close(fd_);
         fd_ = -1;
@@ -101,31 +102,53 @@ std::unique_ptr<TcpTransport> TcpTransport::Accept(int timeout)
     return conn;
 }
 
-int SendData(const uint8_t* data, size_t len)
-{
-    if (fd_ < 0 || is_listen_) return -1;
 
+// Clinet
+bool TcpTransport::Connect(const std::string& ip, uint16_t port) {
+    Close();
+
+    fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (fd_ < 0) return false;
+
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+
+    if (::inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) <= 0) {
+        Close();
+        return false;
+    }
+
+    if (::connect(fd_, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        Close();
+        return false;
+    }
+
+    is_listen_ = false; // 클라이언트는 listen 상태가 아님
+    return true;
+}
+
+// 공통 송수신
+int TcpTransport::SendData(const uint8_t* data, size_t len) {
+    if (fd_ < 0 || is_listen_) return -1;
     size_t sent = 0;
-    while(sent < len) {
+    while (sent < len) {
         ssize_t n = ::send(fd_, data + sent, len - sent, 0);
         if (n > 0) {
             sent += (size_t)n;
             continue;
         }
         if (n == 0) return (int)sent;
-
         if (errno == EINTR) continue;
         return -1;
     }
     return (int)sent;
 }
 
-int RecvData(uint8_t* buf, size_t len)
-{
+int TcpTransport::RecvData(uint8_t* buf, size_t len) {
     if (fd_ < 0 || is_listen_) return -1;
-
-    while(true) {
-        ssize_t n = ::recv(fd_, buf, len, 0)
+    while (true) {
+        ssize_t n = ::recv(fd_, buf, len, 0); // 세미콜론 추가
         if (n >= 0) return (int)n;
         if (errno == EINTR) continue;
         return -1;
