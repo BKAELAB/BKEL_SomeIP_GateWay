@@ -16,7 +16,7 @@ TcpTransport::~TcpTransport() { Close(); }
 TcpTransport::TcpTransport(TcpTransport&& other) noexcept {
     fd_ = other.fd_;
     is_listen_ = other.is_listen_;
-    other.fd_ = -1; // 오타 수정
+    other.fd_ = -1;
     other.is_listen_ = false;
 }
 
@@ -147,10 +147,14 @@ int TcpTransport::SendData(const uint8_t* data, size_t len) {
 
 int TcpTransport::RecvData(uint8_t* buf, size_t len) {
     if (fd_ < 0 || is_listen_) return -1;
+
     while (true) {
-        ssize_t n = ::recv(fd_, buf, len, 0); // 세미콜론 추가
-        if (n >= 0) return (int)n;
+        ssize_t n = ::recv(fd_, buf, len, 0);
+
+        if (n > 0) return (int)n;
+        if (n == 0) return 0;
         if (errno == EINTR) continue;
+
         return -1;
     }
 }

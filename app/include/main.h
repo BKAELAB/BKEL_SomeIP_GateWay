@@ -15,3 +15,6 @@
 #include <thread>
 #include <termios.h> 
 #include <cstring>
+
+int RunServer(uint16_t port);
+int RunClient(const std::string& ip, uint16_t port);

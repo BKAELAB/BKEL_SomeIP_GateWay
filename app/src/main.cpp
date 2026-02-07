@@ -1,5 +1,6 @@
 #include "main.h"
 
+#define BUF_SIZE 1024
 // int main(int argc, char* argv[])
 // {
 //     UART uart("/dev/serial0", B115200);
@@ -26,49 +27,119 @@
 // }
 
 int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cout << "사용법: ./bkel_gateway server  또는  ./bkel_gateway client" << std::endl;
-        return 0;
+
+    if (argc < 3) {
+        std::cout 
+            << "사용법:\n"
+            << "./bkel_gateway server <PORT>\n"
+            << "./bkel_gateway client <IP> <PORT>\n";
+        return 1;
     }
 
     std::string mode = argv[1];
-    TcpTransport node;
 
     if (mode == "server") {
-        // --- 서버 모드 ---
-        std::cout << "[서버] 9000번 포트 여는 중..." << std::endl;
-        if (!node.Listen("0.0.0.0", 9000, 5)) return -1;
-
-        std::cout << "[서버] 접속 대기 중..." << std::endl;
-        auto client_conn = node.Accept(-1); // 접속 올 때까지 대기
-
-        if (client_conn) {
-            std::cout << "[서버] 클라이언트 접속함!" << std::endl;
-            uint8_t buf[1024];
-            int len = client_conn->RecvData(buf, sizeof(buf));
-            if (len > 0) {
-                std::cout << "[서버] 받은 메시지: " << std::string((char*)buf, len) << std::endl;
-                client_conn->SendData((uint8_t*)"Hi Client!", 10);
-            }
-        }
+        uint16_t port = static_cast<uint16_t>(std::stoi(argv[2]));
+        return RunServer(port);
     } 
-    else if (mode == "client") {
-        // --- 클라이언트 모드 ---
-        std::cout << "[클라이언트] 서버 접속 시도 (127.0.0.1:9000)..." << std::endl;
-        if (!node.Connect("127.0.0.1", 9000)) {
-            std::cout << "[클라이언트] 접속 실패!" << std::endl;
-            return -1;
+    if (mode == "client") {
+        std::string ip = argv[2];
+        uint16_t port = static_cast<uint16_t>(std::stoi(argv[3]));
+        return RunClient(ip, port);
+    }
+}
+
+
+int RunServer(uint16_t port)
+{
+    TcpTransport server;
+    std::cout << "[서버] " << port << "번 포트 여는 중..." << std::endl;
+
+    if (!server.Listen("0.0.0.0", port, 5)) return -1; // 접속 올 때까지 대기
+
+    std::cout << "[서버] 접속 대기 중..." << std::endl;
+    auto client_conn = server.Accept(-1); // 연결됐을 때 새로운 TcpTransport 객체 client_conn 생성
+
+    if (!client_conn) {
+        std::cerr << "[서버] Accept 실패\n";
+        return 1; 
+    }
+    std::cout << "[서버] 클라이언트 접속함!\n" << std::endl;
+
+    std::vector<uint8_t> buf(BUF_SIZE);
+    while (true) {
+        int len = client_conn->RecvData(buf.data(), buf.size());
+        if (len == 0) {
+            std::cout << "[서버] 클라이언트 연결 끊김\n";
+            break;
+        }
+        if (len < 0) {
+            std::cerr << "[서버] Recv Error\n";
+            break;
         }
 
-        std::cout << "[클라이언트] 접속 성공! 메시지 보냄..." << std::endl;
-        node.SendData((uint8_t*)"Hello Server!", 13);
-
-        uint8_t buf[1024];
-        int len = node.RecvData(buf, sizeof(buf));
-        if (len > 0) {
-            std::cout << "[클라이언트] 서버 응답: " << std::string((char*)buf, len) << std::endl;
+        int sent = client_conn->SendData(buf.data(), (size_t)len);
+        if (sent < 0) {
+            std::cerr << "[서버] Sent Error\n";
+            break;
         }
     }
+    return 0;  
+}
 
+int RunClient(const std::string& ip, uint16_t port)
+{
+    TcpTransport clnt;
+
+    // --- 클라이언트 모드 ---
+    if (!clnt.Connect(ip, port)) {
+        std::cout << "[클라이언트] 접속 실패!" << std::endl;
+        return -1;
+    }
+
+    std::cout << "[클라이언트] 서버 접속 시도 " << ip << ":" << port << std::endl;
+    std::cout << "=== Type Msg and press Enter (q or Q to quit) ===\n";
+
+    std::string msgLine;
+    std::vector<uint8_t> recvBuf(BUF_SIZE);
+    std::string acc; // 누적 수신 버퍼
+
+    while (true) {
+        std::cout << "[SEND] ";
+        std::cout.flush();
+
+        if (!std::getline(std::cin, msgLine)) break;
+        if (msgLine == "q" || msgLine == "Q") break;
+        
+        msgLine.push_back('\n');
+
+        int sent = clnt.SendData(reinterpret_cast<const uint8_t*>(msgLine.data()), msgLine.size());
+        if (sent < 0) {
+            std::cerr << "[클라이언트] Send Error\n";
+            break;
+        }
+
+        // 메시지 받기
+        while (acc.find('\n') == std::string::npos) {
+            int rev_len = clnt.RecvData(recvBuf.data(), recvBuf.size());
+            if (rev_len == 0) {
+                std::cout << "[클라이언트] 서버 닫힘\n";
+                return 0;
+            }
+
+            if (rev_len < 0) {
+                std::cerr << "[클라이언트] Recv Error!\n";
+                return -1;
+            }
+            acc.append(reinterpret_cast<const char*>(recvBuf.data()), (size_t)rev_len);
+        }
+
+        size_t pos = acc.find('\n');
+        std::string line = acc.substr(0, pos + 1);
+        acc.erase(0, pos + 1);
+
+        std::cout << "[ECHO] " << line;
+        std::cout.flush();
+    }
     return 0;
 }
