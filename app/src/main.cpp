@@ -17,6 +17,9 @@ int main(int argc, char* argv[])
             for (ssize_t i = 0; i < n; i++)
                 printf("%02X ", rxBuf[i]);
             printf("\n");
+
+            parser.push(rxBuf, (size_t)n);
+            fflush(stdout);
         }
     }
     return 0;
