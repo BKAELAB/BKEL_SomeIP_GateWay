@@ -71,7 +71,7 @@ void AppSendDiagADC2Val()
 	uint16_t u16AdcVal = ((u32AdcVal) & 0xFFFF);
 	memcpy(payload, &u16AdcVal, 2U);
 
-	size_t frame_len = build_frame(out_buf, 64U, (uint8_t)0x22, (uint8_t)0x02, payload, (uint16_t)2U);
+	size_t frame_len = build_frame(out_buf, 64U, (uint8_t)0x23, (uint8_t)0x02, payload, (uint16_t)2U);
 	BKEL_UART_Tx(out_buf, frame_len);
 }
 
@@ -84,7 +84,7 @@ void AppSendDiagGPOPinState()
 	};
 	payload[0] = BKEL_read_pin(&tGPOPin);
 
-	size_t frame_len = build_frame(out_buf, 64U, (uint8_t)0x23, (uint8_t)0x01, payload, (uint16_t)1U);
+	size_t frame_len = build_frame(out_buf, 64U, (uint8_t)0x24, (uint8_t)0x01, payload, (uint16_t)1U);
 	BKEL_UART_Tx(out_buf, frame_len);
 }
 
@@ -97,7 +97,7 @@ void AppSendDiagGPIPinState()
 	};
 	payload[0] = BKEL_read_pin(&tGPIPin);
 
-	size_t frame_len = build_frame(out_buf, 64U, (uint8_t)0x23, (uint8_t)0x01, payload, (uint16_t)1U);
+	size_t frame_len = build_frame(out_buf, 64U, (uint8_t)0x25, (uint8_t)0x01, payload, (uint16_t)1U);
 	BKEL_UART_Tx(out_buf, frame_len);
 }
 
@@ -106,10 +106,10 @@ void AppSendDiagLD2PinState()
 	uint8_t out_buf[64];
 	uint8_t payload[1];
 	BKEL_gpio_pin tLD2Pin = {
-			GPIOA, 5U
+			GPIOA, (1U<<5U)
 	};
 	payload[0] = BKEL_read_pin(&tLD2Pin);
 
-	size_t frame_len = build_frame(out_buf, 64U, (uint8_t)0x23, (uint8_t)0x01, payload, (uint16_t)1U);
+	size_t frame_len = build_frame(out_buf, 64U, (uint8_t)0x26, (uint8_t)0x01, payload, (uint16_t)1U);
 	BKEL_UART_Tx(out_buf, frame_len);
 }
