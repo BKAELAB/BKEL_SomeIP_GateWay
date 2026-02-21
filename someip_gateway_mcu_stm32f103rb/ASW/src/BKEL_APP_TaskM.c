@@ -203,7 +203,7 @@ void rtos_taskinit(void)
 	    "T_Command_Customer",
 		BKEL_TASK_STACK_SIZE_MAX,
 	    NULL,
-		BKEL_TASK_PRI_REALTIME_2,
+		BKEL_TASK_PRI_REALTIME_1,
 		handleCommandStack,
 	    &handleCommandTCB
 	);
@@ -213,7 +213,7 @@ void rtos_taskinit(void)
 	    "T_Send_Dignostic_Data",
 	    BKEL_TASK_STACK_SIZE_MIN,
 	    NULL,
-	    BKEL_TASK_PRI_REALTIME_1,
+	    BKEL_TASK_PRI_REALTIME_2,
 	    sendDataStack,
 	    &sendDataTCB
 	);
@@ -223,7 +223,7 @@ void rtos_taskinit(void)
 	    "T_RPC_EXECUTE",
 		BKEL_TASK_STACK_SIZE_MID,
 	    NULL,
-	    BKEL_TASK_PRI_REALTIME_1,
+	    BKEL_TASK_PRI_REALTIME_2,
 		RPCStack,
 	    &RPCTCB
 	);

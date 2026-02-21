@@ -342,7 +342,7 @@ static void BKEL_USART1_DMA_Init(void)
      * USARTDIV = 72,000,000 / (16 * 115200) = 39.0625
      * BRR = 0x271
      */
-    PAN_USART1_BRR = 0x271;
+    PAN_USART1_BRR = 0x0271;
 
     /* 4. DMA RX 설정 (DMA1 Channel5) */
     PAN_DMA1_CH5_CCR &= ~(1 << 0);   // DMA Disable

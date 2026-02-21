@@ -14,6 +14,11 @@ void BKEL_UART_Tx(const uint8_t *buf, uint16_t buf_len)
 		while(!(PAN_USART1_SR & (1 << 7)));
 		PAN_USART1_DR = buf[i];
 	}
+	for (uint16_t i = 0; i < buf_len; ++i)
+	{
+		while(!(PAN_USART2_SR & (1 << 7)));
+		PAN_USART2_DR = buf[i];
+	}
 }
 
 void uart_hex_dump(UART_HandleTypeDef *huart,
