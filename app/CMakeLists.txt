@@ -12,6 +12,7 @@ add_executable(bkel_gateway
     src/transport/TcpTransport.cpp
     src/transport/TlsTransport.cpp
     src/protocol/PacketParser.cpp
+    src/protocol/PacketEncoder.cpp
 )
 
 target_include_directories(bkel_gateway PRIVATE include)
