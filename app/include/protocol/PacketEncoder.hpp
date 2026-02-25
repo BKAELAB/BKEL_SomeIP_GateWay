@@ -1,5 +1,18 @@
 #pragma once
 
+#include <protocol/Packet.hpp>
+#include <protocol/PacketParser.hpp>
+
+class PacketEncoder
+{
+public:
+    static std::vector<uint8_t> build_frame(uint8_t sid,
+                                            uint8_t type,
+                                            const uint8_t* payload,
+                                            uint16_t payload_len,
+                                            uint16_t cid);
+};
+
 inline uint8_t calc_crc8(const uint8_t* data, size_t len)
 {
     uint8_t crc = 0x00;
