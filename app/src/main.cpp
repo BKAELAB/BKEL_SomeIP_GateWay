@@ -1,76 +1,35 @@
 #include "main.h"
-#include <csignal>
+
 // #include <iostream>
 // #include <vector>
 // #include <unistd.h>
 // #include <cstdio>
 // #include <cstdint>
 
-// int main(int argc, char* argv[])
-// {
-//     UART uart("/dev/serial0", B115200);
-//     PacketParser parser;
-
-//     uint8_t txBuf[128];
-//     uint8_t rxBuf[128];
-
-//     while (true)
-//     {
-//         ssize_t n = uart.readData(rxBuf, sizeof(rxBuf));
-//         if (n > 0)
-//         {
-//             printf("[RAW RX %zd] ", n);
-//             for (ssize_t i = 0; i < n; i++)
-//                 printf("%02X ", rxBuf[i]);
-//             printf("\n");
-
-//             parser.push(rxBuf, (size_t)n);
-//             fflush(stdout);
-//         }
-//     }
-//     return 0;
-// }
-// TCP Server test
-static std::atomic<bool> g_running(true);
-static TcpServer* g_server = nullptr;
-
-void signalHandler(int signum) {
-    std::cout << "\n[Main] Signal " << signum << " received, shutting down..." << std::endl;
-    if (g_server) {
-        g_server->shutdown();
-    }
-    g_running = false;
-}
-// 터미널에 아래와 같이 입력 
-// nc 127.0.0.1 8080  
-// cid 임의로 입력 후 test
-
 int main(int argc, char* argv[])
 {
-    signal(SIGINT, signalHandler);   // Ctrl+C
-    signal(SIGTERM, signalHandler);  // kill
+    UART uart("/dev/serial0", B115200);
+    PacketParser parser;
 
-    TcpServer server(8080);
-    g_server = &server;
+    uint8_t txBuf[128];
+    uint8_t rxBuf[128];
 
-    try {
-        server.startup();
-        std::cout << "[Main] Server running. Press Ctrl+C to stop." << std::endl;
+    while (true)
+    {
+        ssize_t n = uart.readData(rxBuf, sizeof(rxBuf));
+        if (n > 0)
+        {
+            printf("[RAW RX %zd] ", n);
+            for (ssize_t i = 0; i < n; i++)
+                printf("%02X ", rxBuf[i]);
+            printf("\n");
 
-        // 메인 스레드 대기
-        while (g_running) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            parser.push(rxBuf, (size_t)n);
+            fflush(stdout);
         }
-    } catch (const std::exception& e) {
-        std::cerr << "[Main] Exception: " << e.what() << std::endl;
-        return 1;
     }
-    std::cout << "[Main] Exit" << std::endl;
     return 0;
 }
-
-
-
 
 // // ===== RX 처리 =====
 // static void handle_uart_rx(UART& uart, PacketParser& parser)
