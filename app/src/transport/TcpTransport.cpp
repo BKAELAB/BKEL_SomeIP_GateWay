@@ -1,10 +1,10 @@
-#include "transprot/TcpTransport.hpp"
+#include "transport/TcpTransport.hpp"
 #include <sys/socket.h>
 #include <unistd.h>
 #include <iostream>
 
 TcpTransport::TcpTransport(int clientFd, const std::string& cid, RxCallback rxCallback)
-    : clientFd_(clientFd), cid_(cid), RxCallback_(rxCallback), running_(false) {}
+    : clientFd_(clientFd), cid_(cid), rxCallback_(rxCallback), running_(false) {}
 
 TcpTransport::~TcpTransport() {
     if (running_) {
@@ -14,8 +14,8 @@ TcpTransport::~TcpTransport() {
 
 void TcpTransport::start() {
     running_ = true;
-    rxThread= std::thread(&TcpTransport::rxLoop, this);
-    TxThread= std::thread(&TcpTransport::txLoop, this);
+    rxThread_= std::thread(&TcpTransport::rxLoop, this);
+    txThread_= std::thread(&TcpTransport::txLoop, this);
 
 }
 
@@ -32,8 +32,8 @@ void TcpTransport::stop() {
     //Tx: 큐에 데이터 없어도 TxThread 깨워서 종료
     txCv_.notify_all();
 
-    if (RxThread_.joinable()) rxThread_.join();
-    if (TxThread_.joinable()) TxThread_.join();
+    if (rxThread_.joinable()) rxThread_.join();
+    if (txThread_.joinable()) txThread_.join();
 
 }
 
