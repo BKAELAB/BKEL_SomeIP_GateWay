@@ -10,6 +10,7 @@ add_executable(bkel_gateway
     src/core/SessionManager.cpp
     src/transport/UartTransport.cpp
     src/transport/TcpTransport.cpp
+    src/transport/TcpServer.cpp
     src/transport/TlsTransport.cpp
     src/protocol/PacketParser.cpp
     src/protocol/PacketEncoder.cpp
