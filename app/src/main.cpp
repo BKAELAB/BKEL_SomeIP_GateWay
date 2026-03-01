@@ -1,5 +1,5 @@
 #include "main.h"
-#include <csignal>
+#include <csignal> // 테스트 용으로 추가
 // #include <iostream>
 // #include <vector>
 // #include <unistd.h>
@@ -50,17 +50,48 @@ int main(int argc, char* argv[])
     signal(SIGINT, signalHandler);   // Ctrl+C
     signal(SIGTERM, signalHandler);  // kill
 
-    TcpServer server(8080);
+    // 임시 추가
+    auto rxCallback = [](const std::string& cid, const std::vector<uint8_t>& data) {
+        std::string msg(data.begin(), data.end());
+        std::cout << "[RxHandler] CID=" << cid << " msg=" << msg << std::endl;
+    };
+
+    TcpServer server(8080, rxCallback);
     g_server = &server;
 
     try {
         server.startup();
         std::cout << "[Main] Server running. Press Ctrl+C to stop." << std::endl;
 
+        // Tx 테스트
+        std::thread txTestThread([&]() {
+            // 10 초 대기
+            //std::this_thread::sleep_for(std::chrono::seconds(10));
+
+            // 클라이언트 연결될 때까지 대기
+            while (g_running) {
+                {
+                    std::lock_guard<std::mutex> lock(server.getTransportsMutex());
+                    if (!server.getTransports().empty()) break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            }
+
+            if (!g_running) return;
+
+            std::string msg = "hello from Server!!\n";
+            std::vector<uint8_t> data(msg.begin(), msg.end());
+            std::cout << "[Main] Sending test Message.." << std::endl;
+            server.sendToFirst(data);
+        });
+
         // 메인 스레드 대기
         while (g_running) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
+
+        txTestThread.join();
+
     } catch (const std::exception& e) {
         std::cerr << "[Main] Exception: " << e.what() << std::endl;
         return 1;

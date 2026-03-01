@@ -5,12 +5,27 @@
 #include <stdexcept>
 #include <iostream>
 
-TcpServer::TcpServer(int port)
-    : port_(port), serverFd_(-1), running_(false) {}
+/* SessionManager 구현 후 수정할 것
+ * 1. TcpServer 생성자 - RxCallback
+ * 2. 테스트용 함수 sendToFirst()
+ */
+
+TcpServer::TcpServer(int port, TcpTransport::RxCallback rxCallback)
+    : port_(port), serverFd_(-1), pendingFd_(-1), running_(false), rxCallback_(rxCallback) {}
 
 TcpServer::~TcpServer() {
     if (running_) {  // 아직 안 끝났을 때만 shutdown 호출
         shutdown();
+    }
+}
+
+// SessionManager 완성 후 제거
+void TcpServer::sendToFirst(const std::vector<uint8_t>& data) {
+    std::lock_guard<std::mutex> lock(transportsMutex_);
+    if (!transports_.empty()) {
+        transports_[0]->sendData(data);
+    } else {
+        std::cerr << "[TcpServer] sendToFirst: no client connected" << std::endl;
     }
 }
 
@@ -52,10 +67,27 @@ void TcpServer::shutdown() {
     }
     std::cout << "[TcpServer] serverFd closed" << std::endl;
 
+    // recv() 블로킹 해제
+    {
+        std::lock_guard<std::mutex> lock(pendingMutex_);
+        if (pendingFd_ >= 0) {
+            ::shutdown(pendingFd_, SHUT_RDWR);
+            ::close(pendingFd_);
+            pendingFd_ = -1;
+        }
+    }
+
     if (acceptThread_.joinable()) {
         std::cout << "[TcpServer] waiting acceptThread..." << std::endl;
         acceptThread_.join();
         std::cout << "[TcpServer] acceptThread done" << std::endl;
+    }
+    
+    {
+        std::lock_guard<std::mutex> lock(transportsMutex_);
+        for (auto& transport : transports_) {
+            transport->stop();
+        }
     }
 }
 
@@ -72,16 +104,40 @@ void TcpServer::acceptLoop() {
             continue;
         }
 
+        // recv() 블로킹 전에 pendingFd_ 저장
+        {
+            std::lock_guard<std::mutex> lock(pendingMutex_);
+            pendingFd_ = clientFd;
+        }
+
         // Req-B-20: 연결 시 CID를 클라이언트로부터 수신
         // 실제 CID 수신 프로토콜에 맞게 수정 필요.
         char cidBuf[64] = {};
         ssize_t n = recv(clientFd, cidBuf, sizeof(cidBuf) - 1, 0);
+
+        // recv() 완료 후 pendingFd_ 초기화
+        {
+            std::lock_guard<std::mutex> lock(pendingMutex_);
+            pendingFd_ = -1;
+        }
+
         if (n <= 0) {
             ::close(clientFd);
             continue;
         }
         std::string cid(cidBuf, n);
+        // cid '\n' '\r' 제거
+        while (!cid.empty() && (cid.back() == '\n' || cid.back() == '\r')) {
+            cid.pop_back();
+        }
         std::cout << "[TcpServer] Client connection, CID=" << cid << std::endl;
+
+        auto transport = std::make_shared<TcpTransport>(clientFd, cid, rxCallback_);
+        {
+            std::lock_guard<std::mutex> lock(transportsMutex_);
+            transports_.push_back(transport);
+        }
+        transport->start();
     }
     std::cout << "[TcpServer] acceptLoop exit" << std::endl;
 }
