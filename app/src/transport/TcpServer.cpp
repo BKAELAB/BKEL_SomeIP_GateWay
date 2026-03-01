@@ -5,12 +5,27 @@
 #include <stdexcept>
 #include <iostream>
 
-TcpServer::TcpServer(int port)
-    : port_(port), serverFd_(-1), running_(false) {}
+/* SessionManager 구현 후 수정할 것
+ * 1. TcpServer 생성자 - RxCallback
+ * 2. 테스트용 함수 sendToFirst()
+ */
+
+TcpServer::TcpServer(int port, TcpTransport::RxCallback rxCallback)
+    : port_(port), serverFd_(-1), running_(false), rxCallback_(rxCallback) {}
 
 TcpServer::~TcpServer() {
     if (running_) {  // 아직 안 끝났을 때만 shutdown 호출
         shutdown();
+    }
+}
+
+// SessionManager 완성 후 제거
+void TcpServer::sendToFirst(const std::vector<uint8_t>& data) {
+    std::lock_guard<std::mutex> lock(transportsMutex_);
+    if (!transports_.empty()) {
+        transports_[0]->sendData(data);
+    } else {
+        std::cerr << "[TcpServer] sendToFirst: no client connected" << std::endl;
     }
 }
 
@@ -82,6 +97,13 @@ void TcpServer::acceptLoop() {
         }
         std::string cid(cidBuf, n);
         std::cout << "[TcpServer] Client connection, CID=" << cid << std::endl;
+
+        auto transport = std::make_shared<TcpTransport>(clientFd, cid, rxCallback_);
+        {
+            std::lock_guard<std::mutex> lock(transportsMutex_);
+            transports_.push_back(transport);
+        }
+        transport->start();
     }
     std::cout << "[TcpServer] acceptLoop exit" << std::endl;
 }
