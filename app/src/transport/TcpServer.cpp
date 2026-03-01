@@ -11,7 +11,7 @@
  */
 
 TcpServer::TcpServer(int port, TcpTransport::RxCallback rxCallback)
-    : port_(port), serverFd_(-1), running_(false), rxCallback_(rxCallback) {}
+    : port_(port), serverFd_(-1), pendingFd_(-1), running_(false), rxCallback_(rxCallback) {}
 
 TcpServer::~TcpServer() {
     if (running_) {  // 아직 안 끝났을 때만 shutdown 호출
@@ -67,6 +67,16 @@ void TcpServer::shutdown() {
     }
     std::cout << "[TcpServer] serverFd closed" << std::endl;
 
+    // recv() 블로킹 해제
+    {
+        std::lock_guard<std::mutex> lock(pendingMutex_);
+        if (pendingFd_ >= 0) {
+            ::shutdown(pendingFd_, SHUT_RDWR);
+            ::close(pendingFd_);
+            pendingFd_ = -1;
+        }
+    }
+
     if (acceptThread_.joinable()) {
         std::cout << "[TcpServer] waiting acceptThread..." << std::endl;
         acceptThread_.join();
@@ -94,10 +104,23 @@ void TcpServer::acceptLoop() {
             continue;
         }
 
+        // recv() 블로킹 전에 pendingFd_ 저장
+        {
+            std::lock_guard<std::mutex> lock(pendingMutex_);
+            pendingFd_ = clientFd;
+        }
+
         // Req-B-20: 연결 시 CID를 클라이언트로부터 수신
         // 실제 CID 수신 프로토콜에 맞게 수정 필요.
         char cidBuf[64] = {};
         ssize_t n = recv(clientFd, cidBuf, sizeof(cidBuf) - 1, 0);
+
+        // recv() 완료 후 pendingFd_ 초기화
+        {
+            std::lock_guard<std::mutex> lock(pendingMutex_);
+            pendingFd_ = -1;
+        }
+
         if (n <= 0) {
             ::close(clientFd);
             continue;
