@@ -53,7 +53,7 @@ void TcpTransport::rxLoop() {
         ssize_t n = recv(clientFd_, buf, sizeof(buf), 0);
         if (n <= 0) {
             // == 0 연결끊김, -1 에러
-            std::cout << "[TcpTransport] CID=" << cid_ << "disconnected" << std::endl;
+            std::cout << "[TcpTransport] CID=" << cid_ << " disconnected" << std::endl;
             running_ = false;
             txCv_.notify_all();     // rx끊김 감지했을 경우, txLoop 깨워서 종료
             break;

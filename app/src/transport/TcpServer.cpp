@@ -126,6 +126,10 @@ void TcpServer::acceptLoop() {
             continue;
         }
         std::string cid(cidBuf, n);
+        // cid '\n' '\r' 제거
+        while (!cid.empty() && (cid.back() == '\n' || cid.back() == '\r')) {
+            cid.pop_back();
+        }
         std::cout << "[TcpServer] Client connection, CID=" << cid << std::endl;
 
         auto transport = std::make_shared<TcpTransport>(clientFd, cid, rxCallback_);
