@@ -72,6 +72,13 @@ void TcpServer::shutdown() {
         acceptThread_.join();
         std::cout << "[TcpServer] acceptThread done" << std::endl;
     }
+    
+    {
+        std::lock_guard<std::mutex> lock(transportsMutex_);
+        for (auto& transport : transports_) {
+            transport->stop();
+        }
+    }
 }
 
 void TcpServer::acceptLoop() {
