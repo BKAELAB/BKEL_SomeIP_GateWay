@@ -11,6 +11,24 @@
 //     UART uart("/dev/serial0", B115200);
 //     PacketParser parser;
 
+//      // 싱글턴 SessionManager
+//     SessionManager& mgr = SessionManager::getInstance();
+
+//     // 파서가 프레임 완성하면 여기로 들어옴
+//     parser.setCallback([&mgr](const BKEL_Frame& frame) {
+
+//         // 세션 생성 및 최근 SID 기록(정보 담기)
+//         // "UART" 대신 IP 주소 넣어야함
+//         mgr.onFrameArrived(frame.cid, "UART", frame);
+
+//         // Broad Cast / 1:1 통신 수행
+//         if (frame.sid == 0x01) {
+//             mgr.broadcast(frame);
+//         } else {
+//             mgr.sendToSession(frame.cid, frame);
+//         }
+//     });
+
 //     uint8_t txBuf[128];
 //     uint8_t rxBuf[128];
 
@@ -100,154 +118,77 @@ int main(int argc, char* argv[])
     return 0;
 }
 
+// #include <cassert>
+// #include <cstdio>
 
-
-
-// // ===== RX 처리 =====
-// static void handle_uart_rx(UART& uart, PacketParser& parser)
+// // 테스트용 프레임 생성 함수
+// static BKEL_Frame makeFrame(uint8_t sid, uint16_t cid)
 // {
-//     uint8_t rxBuf[512];
-//     ssize_t n = uart.readData(rxBuf, sizeof(rxBuf));
-
-//     if (n <= 0) {
-//         printf("[RX] 응답 없음 (Timeout)\n");
-//         return;
-//     }
-
-//     printf("[RX RAW] ");
-//     for (ssize_t i = 0; i < n; i++)
-//         printf("%02X ", rxBuf[i]);
-//     printf("\n");
-
-//     bool frame_found = false;
-
-//     for (ssize_t i = 0; i < n; i++)
-//     {
-//         if (rxBuf[i] != 0xAA) continue;
-//         if (i + 8 > n) break;
-
-//         uint16_t payload_len =
-//             (uint16_t)rxBuf[i + 3] |
-//             ((uint16_t)rxBuf[i + 4] << 8);
-
-//         if (payload_len > BKEL_MAX_PAYLOAD) continue;
-
-//         size_t frame_len = 8u + payload_len;
-//         if (i + (ssize_t)frame_len > n) continue;
-
-//         const uint8_t* frame = &rxBuf[i];
-
-//         uint8_t rx_crc   = frame[frame_len - 1];
-//         uint8_t calc_crc = calc_crc8(frame + BKEL_SOF_SIZE,
-//                                      BKEL_HDR_SIZE + payload_len + BKEL_CID_SIZE);
-
-//         if (calc_crc != rx_crc) continue;
-
-//         frame_found = true;
-
-//         printf("[RX FRAME OK] ");
-//         for (size_t j = 0; j < frame_len; j++)
-//             printf("%02X ", frame[j]);
-//         printf("\n");
-
-//         parser.push(frame, frame_len);
-//     }
-
-//     if (!frame_found) {
-//         printf("[RX] Data received but no valid BKEL frame detected\n");
-//     }
+//     BKEL_Frame f{};
+//     f.sid = sid;
+//     f.cid = cid;
+//     return f;
 // }
 
-// static void dump_tx(const char* tag, const std::vector<uint8_t>& frame)
+// int main(void)
 // {
-//     printf("[TX] %s: ", tag);
-//     for (uint8_t b : frame)
-//         printf("%02X ", b);
-//     printf("\n");
-// }
+//     // 싱글턴 테스트
+//     SessionManager& mgr1 = SessionManager::getInstance();
+//     SessionManager& mgr2 = SessionManager::getInstance();
 
-// int main()
-// {
-//     UART uart("/dev/serial0", B115200);
-//     PacketParser parser;
+//     assert(&mgr1 == &mgr2);
+//     printf("[확인] 싱글턴: SessionManager는 하나의 인스턴스만 존재\n");
 
-//     uint8_t  type    = 0x01;
-//     uint16_t cid_val = 0x1200;
+//     // 테스트 반복 실행 대비 초기화
+//     mgr1.clearAllForTest();
 
-//     const uint8_t SID_RPC_LD2_CONTROL = 0x10;
-//     const uint8_t SID_DIAG_LD2_STATE  = 0x26;
+//     // 수명관리 Add/Remove 테스트
+//     mgr1.addSession(1001, "UART");
+//     mgr1.addSession(1002, "UART");
 
-//     printf("\n=== RPC/DIAG End-to-End LED Test ===\n");
+//     assert(mgr1.sessionCount() == 2);
+//     printf("[확인] 세션 생성 완료: 현재 세션 개수 = %zu\n",
+//            mgr1.sessionCount());
 
-//     while (true)
-//     {
-//         // LED ON
-//         uint8_t led_on = 0x01;
+//     mgr1.removeSession(1002);
 
-//         auto txOn = PacketEncoder::build_frame(
-//             SID_RPC_LD2_CONTROL, type,
-//             &led_on, 1, cid_val++
-//         );
+//     assert(mgr1.sessionCount() == 1);
+//     printf("[확인] 세션 제거 완료: 현재 세션 개수 = %zu\n",
+//            mgr1.sessionCount());
 
-//         printf("\n[STEP 1] LED ON\n");
-//         dump_tx("RPC LD2 ON", txOn);
-//         uart.writeData(txOn.data(), txOn.size());
+//     // 최근 SID 저장 테스트
+//     mgr1.onFrameArrived(1001, "UART", makeFrame(0x22, 1001));
 
-//         usleep(500000);
-//         handle_uart_rx(uart, parser);
+//     assert(mgr1.lastSid(1001) == 0x22);
+//     printf("[확인] 최근 SID 저장 성공: SID = 0x%02X\n",
+//            mgr1.lastSid(1001));
 
-//         printf(">> LED ON 상태 유지 (2초)\n");
-//         sleep(2);
+//     // 1:1 통신 테스트
+//     mgr1.sendToSession(1001, makeFrame(0x30, 1001));
 
-//         //  DIAG 확인 (ON 상태 확인)
-//         uint8_t dummy = 0x00;
+//     assert(mgr1.clientQueueSize(1001) == 1);
+//     printf("[확인] 1:1 통신 성공: CID=1001, Client 큐 크기 = %zu\n",
+//            mgr1.clientQueueSize(1001));
 
-//         auto txRead1 = PacketEncoder::build_frame(
-//             SID_DIAG_LD2_STATE, type,
-//             &dummy, 1, cid_val++
-//         );
+//     // 브로드캐스트 테스트
+//     mgr1.addSession(1002, "UART");
+//     mgr1.broadcast(makeFrame(0x01, 0xFFFF));
 
-//         printf("\n[STEP 2] DIAG READ (ON 상태 확인)\n");
-//         dump_tx("DIAG LD2 READ", txRead1);
-//         uart.writeData(txRead1.data(), txRead1.size());
+//     assert(mgr1.clientQueueSize(1001) == 2);
+//     assert(mgr1.clientQueueSize(1002) == 1);
 
-//         usleep(500000);
-//         handle_uart_rx(uart, parser);
+//     printf("[확인] 브로드캐스트 성공: CID=1001 큐=%zu, CID=1002 큐=%zu\n",
+//            mgr1.clientQueueSize(1001),
+//            mgr1.clientQueueSize(1002));
 
-//         // LED OFF
-//         uint8_t led_off = 0x00;
+//     // MCU로 보낼 패킷 목록 테스트
+//     mgr1.enqueueToMcu(1001, makeFrame(0x55, 1001));
 
-//         auto txOff = PacketEncoder::build_frame(
-//             SID_RPC_LD2_CONTROL, type,
-//             &led_off, 1, cid_val++
-//         );
+//     assert(mgr1.mcuQueueSize(1001) == 1);
+//     printf("[확인] MCU 큐 적재 성공: CID=1001, MCU 큐 크기 = %zu\n",
+//            mgr1.mcuQueueSize(1001));
 
-//         printf("\n[STEP 3] LED OFF\n");
-//         dump_tx("RPC LD2 OFF", txOff);
-//         uart.writeData(txOff.data(), txOff.size());
-
-//         usleep(500000);
-//         handle_uart_rx(uart, parser);
-
-//         printf(">> LED OFF 상태 유지 (2초)\n");
-//         sleep(2);
-
-//         //  DIAG 확인 (OFF 상태 확인)
-//         auto txRead2 = PacketEncoder::build_frame(
-//             SID_DIAG_LD2_STATE, type,
-//             &dummy, 1, cid_val++
-//         );
-
-//         printf("\n[STEP 4] DIAG READ (OFF 상태 확인)\n");
-//         dump_tx("DIAG LD2 READ", txRead2);
-//         uart.writeData(txRead2.data(), txRead2.size());
-
-//         usleep(500000);
-//         handle_uart_rx(uart, parser);
-
-//         printf("\n==== 3초 후 반복 ====\n");
-//         sleep(3);
-//     }
+//     printf("\n Req-B-24 / Req-B-25 테스트 모두 통과\n\n");
 
 //     return 0;
 // }

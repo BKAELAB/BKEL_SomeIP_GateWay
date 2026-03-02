@@ -98,4 +98,8 @@ void PacketParser::onFrame(const BKEL_Frame& frame)
         printf("\n------------------------------------------\n");
         //printf("\n");
     }
+
+    if (callback) {
+        callback(frame);
+    }
 }
