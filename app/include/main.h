@@ -8,6 +8,7 @@
 #include <protocol/PacketEncoder.hpp>
 #include <core/Session.hpp>
 #include <core/SessionManager.hpp>
+#include <util/Config.hpp>
 #include <iostream>
 #include <chrono>
 #include <thread>

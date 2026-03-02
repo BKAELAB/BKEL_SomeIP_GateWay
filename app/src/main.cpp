@@ -64,7 +64,13 @@ void signalHandler(int signum) {
 // cid 임의로 입력 후 test
 
 int main(int argc, char* argv[])
-{
+{   // config/config.json 경로 기준: app/ 디렉토리에서 실행해야 함
+    // 실행 방법: ./build/bkel_gateway
+    if (!Config::getInstance().load("config/config.json")) {
+        std::cerr << "[Main] Faild to load config" << std::endl;
+        return 1;
+    }
+
     signal(SIGINT, signalHandler);   // Ctrl+C
     signal(SIGTERM, signalHandler);  // kill
 
@@ -74,7 +80,8 @@ int main(int argc, char* argv[])
         std::cout << "[RxHandler] CID=" << cid << " msg=" << msg << std::endl;
     };
 
-    TcpServer server(8080, rxCallback);
+    const auto& tcpConfig = Config::getInstance().get().tcp;
+    TcpServer server(tcpConfig.port, rxCallback);
     g_server = &server;
 
     try {

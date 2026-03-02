@@ -4,6 +4,15 @@ project(BKEL_SomeIP_GateWay LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# nlohmann/json 추가
+include(FetchContent)
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
 add_executable(bkel_gateway
     src/main.cpp
     src/core/Session.cpp
@@ -14,6 +23,7 @@ add_executable(bkel_gateway
     src/transport/TlsTransport.cpp
     src/protocol/PacketParser.cpp
     src/protocol/PacketEncoder.cpp
+    src/util/Config.cpp
 )
 
 target_include_directories(bkel_gateway PRIVATE include)
@@ -22,4 +32,5 @@ target_link_libraries(bkel_gateway
     pthread
     ssl
     crypto
+    nlohmann_json::nlohmann_json
 )
