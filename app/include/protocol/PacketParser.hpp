@@ -5,6 +5,7 @@
 #include <functional>
 #include <vector>
 
+#include <mutex>
 
 class PacketParser
 {
@@ -18,6 +19,7 @@ public:
 private:
     std::vector<uint8_t> rxBuffer;
     std::function<void(const BKEL_Frame&)> callback;
+    std::mutex mtx;
 
     void parse();
     void onFrame(const BKEL_Frame& frame);

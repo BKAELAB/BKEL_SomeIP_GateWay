@@ -1,4 +1,7 @@
 #include "main.h"
+#include <unistd.h>
+#include <cstdio>
+#include <vector>
 #include <csignal> // 테스트 용으로 추가
 // #include <iostream>
 // #include <vector>
@@ -52,6 +55,20 @@
 static std::atomic<bool> g_running(true);
 static TcpServer* g_server = nullptr;
 
+// --------
+// 전송 함수
+void send_command_packet(UART& uart, uint8_t sid, uint8_t type, uint8_t data, uint16_t cid) {
+    auto frame = PacketEncoder::build_frame(sid, type, &data, 1, cid);
+    
+    printf("\n[TX] 전송 데이터: ");
+    for(uint8_t b : frame) printf("%02X ", b);
+    printf(" (SID: 0x%02X, CID: %u)\n", sid, cid);
+
+    // 하위 계층의 전송 함수 호출
+    uart.writeData(frame.data(), (uint32_t)frame.size());
+}
+// --------
+
 void signalHandler(int signum) {
     std::cout << "\n[Main] Signal " << signum << " received, shutting down..." << std::endl;
     if (g_server) {
@@ -67,6 +84,15 @@ int main(int argc, char* argv[])
 {
     signal(SIGINT, signalHandler);   // Ctrl+C
     signal(SIGTERM, signalHandler);  // kill
+
+      // 통신 객체 및 파서 초기화
+    UART uart(DEFAULT_UART_DEVICE, B115200);
+    PacketParser parser;
+    uint16_t cid_counter = 1000;
+   
+    // 호출 시 rxWorker 수신 스레드가 생성, 실시간 Rx 감시 시작
+    uart.start(&parser);
+    printf("UART 수신 스레드\n");
 
     // 임시 추가
     auto rxCallback = [](const std::string& cid, const std::vector<uint8_t>& data) {
@@ -114,7 +140,9 @@ int main(int argc, char* argv[])
         std::cerr << "[Main] Exception: " << e.what() << std::endl;
         return 1;
     }
-    std::cout << "[Main] Exit" << std::endl;
+   
+    uart.stop();  // UART 스레드 종료
+    std::cout << "[Main] Exit" << std::endl; 
     return 0;
 }
 
