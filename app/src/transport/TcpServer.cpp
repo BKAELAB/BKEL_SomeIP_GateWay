@@ -1,6 +1,7 @@
 #include "transport/TcpServer.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 #include <stdexcept>
 #include <iostream>
@@ -10,8 +11,8 @@
  * 2. 테스트용 함수 sendToFirst()
  */
 
-TcpServer::TcpServer(int port, TcpTransport::RxCallback rxCallback)
-    : port_(port), serverFd_(-1), pendingFd_(-1), running_(false), rxCallback_(rxCallback) {}
+TcpServer::TcpServer(const std::string& ip, int port, TcpTransport::RxCallback rxCallback)
+    : ip_(ip), port_(port), serverFd_(-1), pendingFd_(-1), running_(false), rxCallback_(rxCallback) {}
 
 TcpServer::~TcpServer() {
     if (running_) {  // 아직 안 끝났을 때만 shutdown 호출
@@ -39,8 +40,11 @@ void TcpServer::startup() {
 
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(port_);
+
+    // IP 설정
+    if (inet_pton(AF_INET, ip_.c_str(), &addr.sin_addr) <= 0)
+        throw std::runtime_error("Invalid IP addrress");
 
     if (bind(serverFd_, (sockaddr*)&addr, sizeof(addr)) < 0)
         throw std::runtime_error("bind() failed");

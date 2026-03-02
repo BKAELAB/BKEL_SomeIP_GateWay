@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
     };
 
     const auto& tcpConfig = Config::getInstance().get().tcp;
-    TcpServer server(tcpConfig.port, rxCallback);
+    TcpServer server(tcpConfig.ip, tcpConfig.port, rxCallback);
     g_server = &server;
 
     try {

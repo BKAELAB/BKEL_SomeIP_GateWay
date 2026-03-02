@@ -12,7 +12,7 @@
 // Accept 루프는 별도의 백그라운드 Thread에서 동작
 class TcpServer {
 public:
-    explicit TcpServer(int port, TcpTransport::RxCallback rxCallback);
+    explicit TcpServer(const std::string& ip, int port, TcpTransport::RxCallback rxCallback);
     ~TcpServer();
 
     void startup();   // AcceptThread 시작
@@ -27,6 +27,7 @@ public:
 private:
     void acceptLoop();  // 백그라운드 Thread 진입점
 
+    std::string ip_;
     int port_;
     int serverFd_;
     std::atomic<bool> running_;
