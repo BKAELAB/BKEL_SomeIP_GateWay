@@ -1,0 +1,8 @@
+{
+  "tcp": {
+    "ip": "127.0.0.1",
+    "port": 8080,
+    "max_connections": 10,
+    "timeout": 30
+  }
+}
