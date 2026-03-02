@@ -131,6 +131,15 @@ int main(int argc, char* argv[])
 
         // 메인 스레드 대기
         while (g_running) {
+            // // [B-11 Tx 테스트] 5초마다 MCU에 명령 전송
+            // send_command_packet(uart, 0x10, 0x01, 0x55, 1000);
+            
+            // // [B-10 Thread 테스트] 아래 대기 중에도 UART 로그 찍혀야 함
+            // for(int i=0; i<5; i++) {
+            //     if(!g_running) break;
+            //     std::this_thread::sleep_for(std::chrono::seconds(2));
+            // }
+
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
