@@ -1,4 +1,5 @@
 #include "transport/TcpTransport.hpp"
+#include "core/SessionManager.hpp"
 #include <sys/socket.h>
 #include <unistd.h>
 #include <iostream>
@@ -32,9 +33,17 @@ void TcpTransport::stop() {
     //Tx: 큐에 데이터 없어도 TxThread 깨워서 종료
     txCv_.notify_all();
 
-    if (rxThread_.joinable()) rxThread_.join();
+    if (rxThread_.joinable()) {
+        if (rxThread_.get_id() != std::this_thread::get_id()) {
+            rxThread_.join(); // 외부 스레드에서 stop() 호출 시 rxThread 종료 대기
+        } else {
+            rxThread_.detach(); // rxLoop 내부에서 stop() 호출 시 자기 자신은 join 불가-> detach
+        }                       // 클라이언트가 먼저 종료하는 경우
+    }
+    std::cout << "[TcpTransport] rxLoop exited" << std::endl;
+    // txThread 는 자기 자신을 join 하는 경우 없음.
     if (txThread_.joinable()) txThread_.join();
-
+    std::cout << "[TcpTransport] txLoop exited" << std::endl;
 }
 
 void TcpTransport::sendData(const std::vector<uint8_t>& data) {
@@ -51,11 +60,12 @@ void TcpTransport::rxLoop() {
     uint8_t buf[1024];
     while (running_) {
         ssize_t n = recv(clientFd_, buf, sizeof(buf), 0);
+        std::cout << "[Debug] intro" << std::endl;
         if (n <= 0) {
             // == 0 연결끊김, -1 에러
-            std::cout << "[TcpTransport] CID=" << cid_ << " disconnected" << std::endl;
+            uint16_t cidNum = static_cast<uint16_t>(std::stoul(cid_));
+            SessionManager::getInstance().removeSession(cidNum);    // == 0 이면 연결끊김, Session 삭제
             running_ = false;
-            txCv_.notify_all();     // rx끊김 감지했을 경우, txLoop 깨워서 종료
             break;
         }
         std::vector<uint8_t> data(buf, buf + n);
@@ -65,7 +75,7 @@ void TcpTransport::rxLoop() {
             rxCallback_(cid_, data);
         }
     }
-    std::cout << "[TcpTransport] rxLoop exited, CID=" << cid_ << std::endl;
+    std::cout << "[TcpTransport] rxLoop exited func" << std::endl;
 }
 
 void TcpTransport::txLoop() {

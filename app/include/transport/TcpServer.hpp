@@ -20,9 +20,9 @@ public:
 
     // main Test 를 위해 임시 함수 추가
     // SessionManager 완성 후 제거할 것.
-    void sendToFirst(const std::vector<uint8_t>& data);
-    std::mutex& getTransportsMutex() { return transportsMutex_; }
-    const std::vector<std::shared_ptr<TcpTransport>>& getTransports() { return transports_; }
+    //void sendToFirst(const std::vector<uint8_t>& data);
+    //std::mutex& getTransportsMutex() { return transportsMutex_; }
+    //const std::vector<std::shared_ptr<TcpTransport>>& getTransports() { return transports_; }
     
 private:
     void acceptLoop();  // 백그라운드 Thread 진입점
@@ -40,6 +40,6 @@ private:
     TcpTransport::RxCallback rxCallback_; // TcpTransport 생성 시 넘겨줌
     
     // SessionManager 완성 후 교체
-    std::vector<std::shared_ptr<TcpTransport>> transports_;
-    std::mutex transportsMutex_;
+    //std::vector<std::shared_ptr<TcpTransport>> transports_;
+    //std::mutex transportsMutex_;
 };

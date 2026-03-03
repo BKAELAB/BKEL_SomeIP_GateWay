@@ -1,5 +1,5 @@
 #include <core/SessionManager.hpp>
-
+#include <iostream> // debug 용으로 추가
 SessionManager& SessionManager::getInstance() {
     static SessionManager instance;
     return instance;
@@ -11,25 +11,31 @@ std::shared_ptr<Session> SessionManager::findSessionNoLock_(uint16_t cid) {
     return it->second;
 }
 
-void SessionManager::addSession(uint16_t cid, const std::string& ip) {
+void SessionManager::addSession(uint16_t cid, const std::string& ip, std::unique_ptr<TcpTransport> transport) {
     std::lock_guard<std::mutex> lock(mtx_);
     if (sessions_.find(cid) == sessions_.end()) {
-        sessions_[cid] = std::make_shared<Session>(cid, ip);
+        sessions_[cid] = std::make_shared<Session>(cid, ip, std::move(transport));
+        sessions_[cid]->startTransport();
     }
 }
 
 void SessionManager::removeSession(uint16_t cid) {
     std::lock_guard<std::mutex> lock(mtx_);
     sessions_.erase(cid);
+    std::cout << "[Debug] Session removed, CID=" << cid << " count=" << sessions_.size() << std::endl;
 }
 
 void SessionManager::onFrameArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& frame) {
     std::lock_guard<std::mutex> lock(mtx_);
 
-    // 수명관리(Add): 없으면 생성
-    if (sessions_.find(cid) == sessions_.end()) {
-        sessions_[cid] = std::make_shared<Session>(cid, ip);
-    }
+    // // 수명관리(Add): 없으면 생성
+    // if (sessions_.find(cid) == sessions_.end()) {
+    //     sessions_[cid] = std::make_shared<Session>(cid, ip);
+    // }
+
+    // Session 없으면 무시 (생성은 TCP 연결 시 addSession에서만)
+    auto session = findSessionNoLock_(cid);
+    if (!session) return;
 
     // Req-B-25: 최근 요청 SID 기록
     sessions_[cid]->updateLastRequestedSid(frame.sid);
@@ -47,6 +53,12 @@ void SessionManager::sendToSession(uint16_t cid, const BKEL_Frame& frame) {
     auto s = findSessionNoLock_(cid);
     if (!s) return;
     s->enqueueToClient(frame);
+}
+
+// 추가: 세션 수 확인
+size_t SessionManager::getSessionCount() const {
+    std::lock_guard<std::mutex> lock(mtx_);
+    return sessions_.size();
 }
 
 // 테스트 코드 확인용

@@ -1,11 +1,12 @@
 #include "transport/TcpServer.hpp"
+#include "core/SessionManager.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdexcept>
 #include <iostream>
-
+#include <arpa/inet.h>
 /* SessionManager 구현 후 수정할 것
  * 1. TcpServer 생성자 - RxCallback
  * 2. 테스트용 함수 sendToFirst()
@@ -24,14 +25,14 @@ TcpServer::~TcpServer() {
 }
 
 // SessionManager 완성 후 제거
-void TcpServer::sendToFirst(const std::vector<uint8_t>& data) {
-    std::lock_guard<std::mutex> lock(transportsMutex_);
-    if (!transports_.empty()) {
-        transports_[0]->sendData(data);
-    } else {
-        std::cerr << "[TcpServer] sendToFirst: no client connected" << std::endl;
-    }
-}
+// void TcpServer::sendToFirst(const std::vector<uint8_t>& data) {
+//     std::lock_guard<std::mutex> lock(transportsMutex_);
+//     if (!transports_.empty()) {
+//         transports_[0]->sendData(data);
+//     } else {
+//         std::cerr << "[TcpServer] sendToFirst: no client connected" << std::endl;
+//     }
+// }
 
 void TcpServer::startup() {
     serverFd_ = socket(AF_INET, SOCK_STREAM, 0);
@@ -89,13 +90,13 @@ void TcpServer::shutdown() {
         acceptThread_.join();
         std::cout << "[TcpServer] acceptThread done" << std::endl;
     }
-    
-    {
-        std::lock_guard<std::mutex> lock(transportsMutex_);
-        for (auto& transport : transports_) {
-            transport->stop();
-        }
-    }
+    // SessionManager 에서 담당
+    // {
+    //     std::lock_guard<std::mutex> lock(transportsMutex_);
+    //     for (auto& transport : transports_) {
+    //         transport->stop();
+    //     }
+    // }
 }
 
 void TcpServer::acceptLoop() {
@@ -116,6 +117,10 @@ void TcpServer::acceptLoop() {
             std::lock_guard<std::mutex> lock(pendingMutex_);
             pendingFd_ = clientFd;
         }
+        // ClientIp 추출
+        char clientIpBuf[INET_ADDRSTRLEN] = {};
+        inet_ntop(AF_INET, &clientAddr.sin_addr, clientIpBuf, sizeof(clientIpBuf));
+        std::string clientIp(clientIpBuf);
 
         // Req-B-20: 연결 시 CID를 클라이언트로부터 수신
         // 실제 CID 수신 프로토콜에 맞게 수정 필요.
@@ -138,13 +143,13 @@ void TcpServer::acceptLoop() {
             cid.pop_back();
         }
         std::cout << "[TcpServer] Client connection, CID=" << cid << std::endl;
-
-        auto transport = std::make_shared<TcpTransport>(clientFd, cid, rxCallback_);
-        {
-            std::lock_guard<std::mutex> lock(transportsMutex_);
-            transports_.push_back(transport);
-        }
-        transport->start();
+        // Req-B-23: TCP 연결 시 Session 생성
+        uint16_t cidNum = static_cast<uint16_t>(std::stoul(cid));  // (임시) 문자열로 받고 uint16_t 로 변경
+        auto transport = std::make_unique<TcpTransport>(clientFd, cid, rxCallback_);
+        SessionManager::getInstance().addSession(cidNum, clientIp, std::move(transport));
+        // 잘 연결되었는지 확인
+        std::cout << "[Debug] Session count=" << SessionManager::getInstance().getSessionCount() << std::endl;
+        // transport->start(); // Session 내부에서 start
     }
     std::cout << "[TcpServer] acceptLoop exit" << std::endl;
 }
