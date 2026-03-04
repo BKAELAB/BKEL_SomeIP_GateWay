@@ -1,5 +1,5 @@
 #include <core/SessionManager.hpp>
-#include <iostream> // debug 용으로 추가
+#include <iostream> // debug , log
 SessionManager& SessionManager::getInstance() {
     static SessionManager instance;
     return instance;
@@ -22,7 +22,7 @@ void SessionManager::addSession(uint16_t cid, const std::string& ip, std::unique
 void SessionManager::removeSession(uint16_t cid) {
     std::lock_guard<std::mutex> lock(mtx_);
     sessions_.erase(cid);
-    std::cout << "[Debug] Session removed, CID=" << cid << " count=" << sessions_.size() << std::endl;
+    std::cout << "[SessionManager] Session removed, CID=" << cid << " count=" << sessions_.size() << std::endl;
 }
 
 void SessionManager::onFrameArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& frame) {
@@ -32,7 +32,7 @@ void SessionManager::onFrameArrived(uint16_t cid, const std::string& ip, const B
     // if (sessions_.find(cid) == sessions_.end()) {
     //     sessions_[cid] = std::make_shared<Session>(cid, ip);
     // }
-
+    // Session 생성 시, transport(fd)객체 같이 받아야 하므로 cid 만으로는 생성 불가
     // Session 없으면 무시 (생성은 TCP 연결 시 addSession에서만)
     auto session = findSessionNoLock_(cid);
     if (!session) return;
@@ -51,17 +51,13 @@ void SessionManager::broadcast(const BKEL_Frame& frame) {
 void SessionManager::sendToSession(uint16_t cid, const BKEL_Frame& frame) {
     std::lock_guard<std::mutex> lock(mtx_);
     auto s = findSessionNoLock_(cid);
-    if (!s) {
-        std::cout << "[SendToSession] Session not found, CID=" << cid << std::endl;
-        return;
-    }
-    std::cout << "[sendToSession] Session found, CID=" << cid << std::endl;
+    if (!s) return;
+
     s->enqueueToClient(frame);
     s->sendToClient();  // Req-B-32: 패킷 TCP 전송
-    std::cout << "[sendToSession] flushToClient done, CID=" << cid << std::endl;
 }
 
-// 추가: 세션 수 확인
+// 연결된 세션 수 확인
 size_t SessionManager::getSessionCount() const {
     std::lock_guard<std::mutex> lock(mtx_);
     return sessions_.size();

@@ -40,10 +40,8 @@ void TcpTransport::stop() {
             rxThread_.detach(); // rxLoop 내부에서 stop() 호출 시 자기 자신은 join 불가-> detach
         }                       // 클라이언트가 먼저 종료하는 경우
     }
-    std::cout << "[TcpTransport] rxLoop exited" << std::endl;
     // txThread 는 자기 자신을 join 하는 경우 없음.
     if (txThread_.joinable()) txThread_.join();
-    std::cout << "[TcpTransport] txLoop exited" << std::endl;
 }
 
 void TcpTransport::sendData(const std::vector<uint8_t>& data) {
@@ -74,7 +72,7 @@ void TcpTransport::rxLoop() {
             rxCallback_(cid_, data);
         }
     }
-    std::cout << "[TcpTransport] rxLoop exited func" << std::endl;
+    std::cout << "[TcpTransport] rxLoop exited" << std::endl;
 }
 
 void TcpTransport::txLoop() {

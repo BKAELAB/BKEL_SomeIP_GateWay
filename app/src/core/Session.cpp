@@ -2,7 +2,6 @@
 #include <transport/TcpTransport.hpp>
 #include <protocol/PacketParser.hpp>
 #include <utility>
-#include <iostream> // debug 용으로 추가
 Session::Session(uint16_t cid, std::string ip, std::unique_ptr<TcpTransport> transport)
     : cid_(cid),
       ipAddress_(std::move(ip)),
@@ -44,7 +43,6 @@ void Session::sendToClient() { // MCU에서 받은 패킷 (toClientQueue) TCP로
             frame.dlc,
             frame.cid
         );
-        std::cout << "[sendToClient] data size=" << data.size() << std::endl;
         transport_->sendData(data);
     }
     toClientQueue_.clear();
