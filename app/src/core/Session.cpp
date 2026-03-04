@@ -1,7 +1,8 @@
 #include <core/Session.hpp>
 #include <transport/TcpTransport.hpp>
+#include <protocol/PacketParser.hpp>
 #include <utility>
-
+#include <iostream> // debug 용으로 추가
 Session::Session(uint16_t cid, std::string ip, std::unique_ptr<TcpTransport> transport)
     : cid_(cid),
       ipAddress_(std::move(ip)),
@@ -32,4 +33,19 @@ void Session::setBlocked(bool blocked) {
 
 bool Session::isBlocked() const {
     return isBlocked_;
+}
+
+void Session::sendToClient() { // MCU에서 받은 패킷 (toClientQueue) TCP로 보냄
+    for (auto& frame : toClientQueue_) {
+        auto data = PacketEncoder::build_frame(
+            frame.sid,
+            frame.type,
+            frame.payload.data(),
+            frame.dlc,
+            frame.cid
+        );
+        std::cout << "[sendToClient] data size=" << data.size() << std::endl;
+        transport_->sendData(data);
+    }
+    toClientQueue_.clear();
 }

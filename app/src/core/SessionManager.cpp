@@ -51,8 +51,14 @@ void SessionManager::broadcast(const BKEL_Frame& frame) {
 void SessionManager::sendToSession(uint16_t cid, const BKEL_Frame& frame) {
     std::lock_guard<std::mutex> lock(mtx_);
     auto s = findSessionNoLock_(cid);
-    if (!s) return;
+    if (!s) {
+        std::cout << "[SendToSession] Session not found, CID=" << cid << std::endl;
+        return;
+    }
+    std::cout << "[sendToSession] Session found, CID=" << cid << std::endl;
     s->enqueueToClient(frame);
+    s->sendToClient();  // Req-B-32: 패킷 TCP 전송
+    std::cout << "[sendToSession] flushToClient done, CID=" << cid << std::endl;
 }
 
 // 추가: 세션 수 확인

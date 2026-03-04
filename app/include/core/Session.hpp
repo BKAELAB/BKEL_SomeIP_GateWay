@@ -23,6 +23,9 @@ public:
     void setBlocked(bool blocked);
     bool isBlocked() const;
 
+    // 패킷 Tcp 전송
+    void sendToClient();
+
     // 테스트/검증을 위한 최소 getter (Req-B-24/25 확인용)
     // uint8_t getLastRequestedSid() const { return lastRequestedSid_; }
     // size_t  getToMcuQueueSize() const { return toMcuQueue_.size(); }
