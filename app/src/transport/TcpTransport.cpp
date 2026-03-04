@@ -60,7 +60,6 @@ void TcpTransport::rxLoop() {
     uint8_t buf[1024];
     while (running_) {
         ssize_t n = recv(clientFd_, buf, sizeof(buf), 0);
-        std::cout << "[Debug] intro" << std::endl;
         if (n <= 0) {
             // == 0 연결끊김, -1 에러
             uint16_t cidNum = static_cast<uint16_t>(std::stoul(cid_));
@@ -94,9 +93,22 @@ void TcpTransport::txLoop() {
             lock.unlock();
 
             if (clientFd_ >= 0) {
-                send(clientFd_, data.data(), data.size(), 0);
+                // send(clientFd_, data.data(), data.size(), 0);
+                size_t totalSent = 0;
+                while (totalSent < data.size()) {
+                    ssize_t sent = send(clientFd_,
+                                        data.data() + totalSent,    // 보낸 만큼 포인터 이동
+                                        data.size() - totalSent,    // 남은 크기만큼
+                                        0);
+                    if (sent < 0) {
+                        // 에러 처리
+                        std::cerr << "[TcpTransport] send failed, CID=" << cid_ << std::endl;
+                        // removeSession or disconnect 처리
+                        break;
+                    } 
+                    totalSent += sent;
+                }
             }
-
             lock.lock();
         }
     }
