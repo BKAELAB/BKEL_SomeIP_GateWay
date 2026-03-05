@@ -8,14 +8,11 @@
 #include <mutex>
 #include <condition_variable>
 #include <functional>
+#include <protocol/PacketParser.hpp>
 
 class TcpTransport {
 public:
-    // 수신 콜백 타입: CID, 수신 데이터
-    using RxCallback = std::function<void(const std::string&, const std::vector<uint8_t>&)>;
-
-    // 생성자에 RxCallback 추가, SessionManager 완성 후 교체 예정.
-    TcpTransport(int clientFd, const std::string& cid, RxCallback rxCallback);
+    TcpTransport(int clientFd, const std::string& cid);
     ~TcpTransport();
 
     void start();
@@ -31,7 +28,7 @@ private:
 
     int clientFd_;
     std::string cid_;
-    RxCallback rxCallback_;
+    PacketParser parser_; 
 
     std::atomic<bool> running_;
     std::thread rxThread_;

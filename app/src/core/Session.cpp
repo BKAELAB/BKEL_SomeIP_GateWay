@@ -2,6 +2,7 @@
 #include <transport/TcpTransport.hpp>
 #include <protocol/PacketParser.hpp>
 #include <utility>
+#include <iostream>
 Session::Session(uint16_t cid, std::string ip, std::unique_ptr<TcpTransport> transport)
     : cid_(cid),
       ipAddress_(std::move(ip)),
@@ -19,6 +20,7 @@ void Session::updateLastRequestedSid(uint8_t sid) {
 }
 
 void Session::enqueueToMcu(const BKEL_Frame& frame) {
+    std::cout << "[Session] enqueueToMcu, CID=" << cid_ << " SID=0x" << std::hex << (int)frame.sid << std::endl;
     toMcuQueue_.push_back(frame);       // MCU로 보낼 패킷 목록에 담기
 }
 

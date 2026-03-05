@@ -4,8 +4,15 @@
 #include <unistd.h>
 #include <iostream>
 
-TcpTransport::TcpTransport(int clientFd, const std::string& cid, RxCallback rxCallback)
-    : clientFd_(clientFd), cid_(cid), rxCallback_(rxCallback), running_(false) {}
+TcpTransport::TcpTransport(int clientFd, const std::string& cid)
+    : clientFd_(clientFd), cid_(cid), running_(false) 
+{
+    // Req-B-34: TCP Rx 파싱 완료 시 CID로 Session 찾아 MCU 큐에 전달
+    parser_.setCallback([this](const BKEL_Frame& frame) {
+        uint16_t cidNum = static_cast<uint16_t>(std::stoul(cid_));
+        SessionManager::getInstance().forwardToMcu(cidNum, frame);
+    });
+}
 
 TcpTransport::~TcpTransport() {
     if (running_) {
@@ -66,11 +73,7 @@ void TcpTransport::rxLoop() {
             break;
         }
         std::vector<uint8_t> data(buf, buf + n);
-
-        // 패킷 포맷 확인 후 파싱 로직 교체
-        if (rxCallback_) {
-            rxCallback_(cid_, data);
-        }
+        parser_.push(data.data(), data.size());
     }
     std::cout << "[TcpTransport] rxLoop exited" << std::endl;
 }

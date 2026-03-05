@@ -21,6 +21,9 @@ public:
     // 프레임 수신 시 세션 상태 갱신(최근 SID 기록 등)
     void onFrameArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& frame);
     
+    // 클라이언트에서 프레임 수신 시 cid 확인 후 session 큐에 패킷 넣어줌
+    void forwardToMcu(uint16_t cid, const BKEL_Frame& frame);
+    
     // 연결관리
     size_t getSessionCount() const;
     // === 테스트/검증용 최소 함수 ===

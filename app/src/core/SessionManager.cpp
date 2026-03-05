@@ -25,6 +25,14 @@ void SessionManager::removeSession(uint16_t cid) {
     std::cout << "[SessionManager] Session removed, CID=" << cid << " count=" << sessions_.size() << std::endl;
 }
 
+void SessionManager::forwardToMcu(uint16_t cid, const BKEL_Frame& frame) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    std::cout << "[onTcpFrameArrived] cid=" << cid << " frame.cid=" << frame.cid << std::endl;
+    auto session = findSessionNoLock_(cid);
+    if (!session) return;               // Req-B-34: 일치하는 CID 없을 시, 폐기
+        session->enqueueToMcu(frame);   // 일치하는 CID 있을 경우, Session에 패킷 할당
+}
+
 void SessionManager::onFrameArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& frame) {
     std::lock_guard<std::mutex> lock(mtx_);
 
