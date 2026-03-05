@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <protocol/PacketParser.hpp>
+#include <protocol/PacketEncoder.hpp>
 
 int main() {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -21,10 +22,16 @@ int main() {
     std::cout << "[Client] Connected!" << std::endl;
 
     // CID 전송 (nc에서 1023 입력한 것과 동일)
-    std::string cid = "1023\n";
-    send(sock, cid.c_str(), cid.size(), 0);
-    std::cout << "[Client] CID sent" << std::endl;
+    // std::string cid = "1023\n";
+    // send(sock, cid.c_str(), cid.size(), 0);
+    // std::cout << "[Client] CID sent" << std::endl;
     
+    // B-34 테스트: 서버로 BKEL 패킷 전송   
+    uint8_t payload[] = {0x01, 0x02, 0x03, 0x04, 0x05};
+    auto txData = PacketEncoder::build_frame(0x01, 0x01, payload, 5, 9999);
+    send(sock, txData.data(), txData.size(), 0);
+    std::cout << "[Client] BKEL Frame sent" << std::endl;
+
     PacketParser parser;
     parser.setCallback([](const BKEL_Frame& frame) {
         std::cout << "[Client] Frame received!" << std::endl;

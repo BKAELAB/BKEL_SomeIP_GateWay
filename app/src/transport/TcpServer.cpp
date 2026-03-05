@@ -11,11 +11,8 @@
  * 1. TcpServer 생성자 - RxCallback
  */
 
-TcpServer::TcpServer(const std::string& ip, int port, TcpTransport::RxCallback rxCallback)
-    : ip_(ip), port_(port), serverFd_(-1), pendingFd_(-1), running_(false), rxCallback_(rxCallback) 
-    {
-        
-    }
+TcpServer::TcpServer(int port)
+    : port_(port), serverFd_(-1), pendingFd_(-1), running_(false) {}
 
 TcpServer::~TcpServer() {
     if (running_) {  // 아직 안 끝났을 때만 shutdown 호출
@@ -106,20 +103,21 @@ void TcpServer::acceptLoop() {
 
         // Req-B-20: 연결 시 CID를 클라이언트로부터 수신
         // 실제 CID 수신 프로토콜에 맞게 수정 필요.
-        char cidBuf[64] = {};
-        ssize_t n = recv(clientFd, cidBuf, sizeof(cidBuf) - 1, 0);
+        //char cidBuf[64] = {}; // 일단 고정값 테스트
+        //ssize_t n = recv(clientFd, cidBuf, sizeof(cidBuf) - 1, 0);
 
         // recv() 완료 후 pendingFd_ 초기화
         {
             std::lock_guard<std::mutex> lock(pendingMutex_);
             pendingFd_ = -1;
         }
-
-        if (n <= 0) {
-            ::close(clientFd);
-            continue;
-        }
-        std::string cid(cidBuf, n);
+        // 일단 주석
+        // if (n <= 0) {
+        //     ::close(clientFd);
+        //     continue;
+        // }
+        // std::string cid(cidBuf, n); // 일단 고정값으로 테스트
+        std::string cid = "1023\n";
         // cid '\n' '\r' 제거
         while (!cid.empty() && (cid.back() == '\n' || cid.back() == '\r')) {
             cid.pop_back();
@@ -127,7 +125,7 @@ void TcpServer::acceptLoop() {
         std::cout << "[TcpServer] Client connection, CID=" << cid << std::endl;
         // Req-B-23: TCP 연결 시 Session 생성
         uint16_t cidNum = static_cast<uint16_t>(std::stoul(cid));  // (임시) 문자열로 받고 uint16_t 로 변경
-        auto transport = std::make_unique<TcpTransport>(clientFd, cid, rxCallback_);
+        auto transport = std::make_unique<TcpTransport>(clientFd, cid);
         SessionManager::getInstance().addSession(cidNum, clientIp, std::move(transport));   //Session 생성
 
         std::cout << "[TcpServer] Session count=" << SessionManager::getInstance().getSessionCount() << std::endl;

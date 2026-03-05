@@ -12,7 +12,7 @@
 // Accept 루프는 별도의 백그라운드 Thread에서 동작
 class TcpServer {
 public:
-    explicit TcpServer(const std::string& ip, int port, TcpTransport::RxCallback rxCallback);
+    explicit TcpServer(int port);
     ~TcpServer();
 
     void startup();   // AcceptThread 시작
@@ -29,7 +29,4 @@ private:
 
     int pendingFd_;         // accept 후 recv 대기 중인 fd
     std::mutex pendingMutex_;
-
-    // 임시 추가
-    TcpTransport::RxCallback rxCallback_; // TcpTransport 생성 시 넘겨줌
 };
