@@ -7,9 +7,6 @@
 #include <stdexcept>
 #include <iostream>
 #include <arpa/inet.h>
-/* SessionManager 구현 후 수정할 것
- * 1. TcpServer 생성자 - RxCallback
- */
 
 TcpServer::TcpServer(int port)
     : port_(port), serverFd_(-1), pendingFd_(-1), running_(false) {}
@@ -102,7 +99,6 @@ void TcpServer::acceptLoop() {
         std::string clientIp(clientIpBuf);
 
         // Req-B-20: 연결 시 CID를 클라이언트로부터 수신
-        // 실제 CID 수신 프로토콜에 맞게 수정 필요.
         //char cidBuf[64] = {}; // 일단 고정값 테스트
         //ssize_t n = recv(clientFd, cidBuf, sizeof(cidBuf) - 1, 0);
 
