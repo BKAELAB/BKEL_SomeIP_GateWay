@@ -7,7 +7,15 @@
 #include <protocol/PacketParser.hpp>
 #include <protocol/PacketEncoder.hpp>
 
-int main() {
+// 실행 방법: ./test_client cid(0~65535)
+
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << "<cid>" << std::endl;
+        return -1;
+    }
+    uint16_t cid = static_cast<uint16_t>(std::stoul(argv[1]));
+
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     
     sockaddr_in addr{};
@@ -21,17 +29,20 @@ int main() {
     }
     std::cout << "[Client] Connected!" << std::endl;
 
-    // CID 전송 (nc에서 1023 입력한 것과 동일)
-    // std::string cid = "1023\n";
-    // send(sock, cid.c_str(), cid.size(), 0);
-    // std::cout << "[Client] CID sent" << std::endl;
-    
-    // B-34 테스트: 서버로 BKEL 패킷 전송   
+
+    // CID 등록 패킷 전송 (sid=0x30)
+    // 서버 receivedCid()가 sid=0x30 을 기대함
+    auto cidFrame = PacketEncoder::build_frame(0x30, 0x00, nullptr, 0, cid);
+    send(sock, cidFrame.data(), cidFrame.size(), 0);
+    std::cout << "[Client] CID register packet sent, CID=" << cid << std::endl;
+
+    // Req-B-34 테스트: 서버로 BKEL 패킷 전송   
     uint8_t payload[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-    auto txData = PacketEncoder::build_frame(0x01, 0x01, payload, 5, 9999);
+    auto txData = PacketEncoder::build_frame(0x01, 0x01, payload, sizeof(payload), cid);
     send(sock, txData.data(), txData.size(), 0);
     std::cout << "[Client] BKEL Frame sent" << std::endl;
 
+    // 서버 응답 수신
     PacketParser parser;
     parser.setCallback([](const BKEL_Frame& frame) {
         std::cout << "[Client] Frame received!" << std::endl;
@@ -58,3 +69,11 @@ int main() {
     close(sock);
     return 0;
 }
+
+/*
+    build_frame(uint8_t sid,
+                uint8_t type,
+                const uint8_t* payload,
+                uint16_t payload_len,
+                uint16_t cid);
+*/

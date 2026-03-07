@@ -1,5 +1,6 @@
 #include "main.h"
 
+// 클라이언트는 nc 대신 ./test_client <cid> 로
 int main(int argc, char* argv[])
 {   
     /* Core */
