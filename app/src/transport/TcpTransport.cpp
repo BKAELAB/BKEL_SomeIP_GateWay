@@ -4,13 +4,12 @@
 #include <unistd.h>
 #include <iostream>
 
-TcpTransport::TcpTransport(int clientFd, const std::string& cid)
+TcpTransport::TcpTransport(int clientFd, uint16_t cid)
     : clientFd_(clientFd), cid_(cid), running_(false) 
 {
     // Req-B-34: TCP Rx 파싱 완료 시 CID로 Session 찾아 MCU 큐에 전달
     parser_.setCallback([this](const BKEL_Frame& frame) {
-        uint16_t cidNum = static_cast<uint16_t>(std::stoul(cid_));
-        SessionManager::getInstance().forwardToMcu(cidNum, frame);
+        SessionManager::getInstance().forwardToMcu(cid_, frame);
     });
 }
 
@@ -67,8 +66,7 @@ void TcpTransport::rxLoop() {
         ssize_t n = recv(clientFd_, buf, sizeof(buf), 0);
         if (n <= 0) {
             // == 0 연결끊김, -1 에러
-            uint16_t cidNum = static_cast<uint16_t>(std::stoul(cid_));
-            SessionManager::getInstance().removeSession(cidNum);    // == 0 이면 연결끊김, Session 삭제
+            SessionManager::getInstance().removeSession(cid_);    // == 0 이면 연결끊김, Session 삭제
             running_ = false;
             break;
         }
@@ -94,7 +92,6 @@ void TcpTransport::txLoop() {
             lock.unlock();
 
             if (clientFd_ >= 0) {
-                // send(clientFd_, data.data(), data.size(), 0);
                 size_t totalSent = 0;
                 while (totalSent < data.size()) {
                     ssize_t sent = send(clientFd_,

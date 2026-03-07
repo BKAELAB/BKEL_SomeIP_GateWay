@@ -12,7 +12,7 @@
 
 class TcpTransport {
 public:
-    TcpTransport(int clientFd, const std::string& cid);
+    TcpTransport(int clientFd, uint16_t cid);
     ~TcpTransport();
 
     void start();
@@ -20,14 +20,14 @@ public:
 
     void sendData(const std::vector<uint8_t>&data); // Tx 큐에 데이터 추가
 
-    const std::string& getCid() const { return cid_; }
+    uint16_t getCid() const { return cid_; }
 
 private:
     void rxLoop();  // Req-B-22: 백그라운드 Rx Thread
     void txLoop();  // Req-B-21: 백그라운드 Tx Thread
 
     int clientFd_;
-    std::string cid_;
+    uint16_t cid_;
     PacketParser parser_; 
 
     std::atomic<bool> running_;
