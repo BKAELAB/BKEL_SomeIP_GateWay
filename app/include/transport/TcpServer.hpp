@@ -6,6 +6,7 @@
 #include <memory>
 #include <mutex>
 #include <functional>
+#include <optional>
 #include "transport/TcpTransport.hpp"
 
 // Req-B-20: TCP 연결 수락 및 TcpTransport 생성
@@ -20,6 +21,7 @@ public:
     
 private:
     void acceptLoop();  // 백그라운드 Thread 진입점
+    std::optional<uint16_t> receivedCid(int clientFd); // 클라이언트 처음 연결 시 cid 반환
 
     std::string ip_;
     int port_;
