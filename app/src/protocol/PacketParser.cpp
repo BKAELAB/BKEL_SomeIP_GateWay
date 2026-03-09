@@ -6,6 +6,7 @@
 
 void PacketParser::push(const uint8_t* data, size_t len)
 {
+    std::lock_guard<std::mutex> lock(mtx);  // 버퍼 접근 전 잠금
     rxBuffer.insert(rxBuffer.end(), data, data + len);
     parse();
 }

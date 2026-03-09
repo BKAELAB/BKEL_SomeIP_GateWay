@@ -13,3 +13,5 @@
 #include <thread>
 #include <termios.h> 
 #include <cstring>
+
+#define DEFAULT_UART_DEVICE "/dev/ttyAMA0"
