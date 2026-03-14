@@ -1,5 +1,7 @@
 #include <core/SessionManager.hpp>
-#include <iostream> // debug , log
+#include <core/Types.hpp>
+#include <iostream>
+
 SessionManager& SessionManager::getInstance() {
     static SessionManager instance;
     return instance;
@@ -71,38 +73,64 @@ size_t SessionManager::getSessionCount() const {
     return sessions_.size();
 }
 
-// 테스트 코드 확인용
-// size_t SessionManager::sessionCount() {
+// Diag 요청에 한하여 SID를 기억
+// 클라이언트가 Diag 요청을 보냈다는 이벤트 시점에 호출
+void SessionManager::onDiagRequestArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& reqFrame) {
+    std::lock_guard<std::mutex> lock(mtx_);
+
+    // 수명관리(Add): 없으면 생성
+    if (sessions_.find(cid) == sessions_.end()) {
+        sessions_[cid] = std::make_shared<Session>(cid, ip);
+    }
+
+    auto& sess = sessions_[cid];
+
+    // Diag 요청일 때만 lastSid 기억
+    // reqFrame이 Diag가 아닐 수도 있으니 방어
+    if (isDiagSid(reqFrame.sid)) {
+        sess->updateLastRequestedSid(reqFrame.sid);
+    }
+    sess->enqueueToMcu(reqFrame);
+}
+
+// UART Rx 유효 프레임 할당
+// uartFrame.sid 와 각 Session의 lastRequestedSid가 일치하는 곳에 할당
+// 겹치는 Session이 존재하면 모두 할당
+void SessionManager::routeUartRxBySid(const BKEL_Frame& uartFrame) {
+    std::lock_guard<std::mutex> lock(mtx_);
+
+    for (auto& kv : sessions_) {
+        auto& sess = kv.second;
+        if (sess->isBlocked()) continue;
+
+        // UART SID == Session lastRequestedSid
+        if (sess->getLastRequestedSid() == uartFrame.sid) {
+            sess->enqueueToClient(uartFrame);
+        }
+    }
+}
+
+// 모든 Session을 순회하면서 MCU로 보낼 패킷이 있는지 확인하고 UART Tx 에게 전달
+bool SessionManager::popNextMcuFrame(BKEL_Frame& out)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+
+    for (auto& kv : sessions_) {
+        if (kv.second->popMcuFrame(out))
+            return true;
+    }
+
+    return false;
+}
+
+// std::shared_ptr<Session> SessionManager::getSession(uint16_t cid)
+// {
 //     std::lock_guard<std::mutex> lock(mtx_);
-//     return sessions_.size();
+//     return findSessionNoLock_(cid);
 // }
 
-// size_t SessionManager::clientQueueSize(uint16_t cid) {
-//     std::lock_guard<std::mutex> lock(mtx_);
-//     auto s = findSessionNoLock_(cid);
-//     return s ? s->getToClientQueueSize() : 0;
-// }
-
-// size_t SessionManager::mcuQueueSize(uint16_t cid) {
-//     std::lock_guard<std::mutex> lock(mtx_);
-//     auto s = findSessionNoLock_(cid);
-//     return s ? s->getToMcuQueueSize() : 0;
-// }
-
-// uint8_t SessionManager::lastSid(uint16_t cid) {
-//     std::lock_guard<std::mutex> lock(mtx_);
-//     auto s = findSessionNoLock_(cid);
-//     return s ? s->getLastRequestedSid() : 0;
-// }
-
-// void SessionManager::clearAllForTest() {
+// void SessionManager::clearSessions()
+// {
 //     std::lock_guard<std::mutex> lock(mtx_);
 //     sessions_.clear();
-// }
-
-// void SessionManager::enqueueToMcu(uint16_t cid, const BKEL_Frame& frame) {
-//     std::lock_guard<std::mutex> lock(mtx_);
-//     auto s = findSessionNoLock_(cid);
-//     if (!s) return;
-//     s->enqueueToMcu(frame);
 // }

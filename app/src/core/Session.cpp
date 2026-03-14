@@ -19,9 +19,25 @@ void Session::updateLastRequestedSid(uint8_t sid) {
     lastRequestedSid_ = sid;    // 가장 최근 요청한 SID 정보 담기
 }
 
+// UART Rx 할당 로직에서 비교
+uint8_t Session::getLastRequestedSid() const {
+    return lastRequestedSid_;
+}
+
 void Session::enqueueToMcu(const BKEL_Frame& frame) {
     std::cout << "[Session] enqueueToMcu, CID=" << cid_ << " SID=0x" << std::hex << (int)frame.sid << std::endl;
     toMcuQueue_.push_back(frame);       // MCU로 보낼 패킷 목록에 담기
+}
+
+// MCU로 보낼 패킷을 꺼내는 함수
+bool Session::popMcuFrame(BKEL_Frame& out)
+{
+    if (toMcuQueue_.empty())
+        return false;
+
+    out = toMcuQueue_.front();
+    toMcuQueue_.erase(toMcuQueue_.begin());
+    return true;
 }
 
 void Session::enqueueToClient(const BKEL_Frame& frame) {

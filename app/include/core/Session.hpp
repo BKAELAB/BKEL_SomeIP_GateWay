@@ -15,9 +15,14 @@ public:
     // 세션 상태 갱신: 최근 요청 SID 기록
     void updateLastRequestedSid(uint8_t sid);
 
+    // UART Rx 프레임 할당 시 last SID와 비교
+    uint8_t getLastRequestedSid() const;
+
     // 큐 적재
     void enqueueToMcu(const BKEL_Frame& frame);
     void enqueueToClient(const BKEL_Frame& frame);
+
+    bool popMcuFrame(BKEL_Frame& out);
 
     // 악의적 행동 정보 보유용
     void setBlocked(bool blocked);

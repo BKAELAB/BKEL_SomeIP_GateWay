@@ -33,6 +33,16 @@ public:
     // uint8_t lastSid(uint16_t cid);
     // void clearAllForTest(); // 테스트 반복 시 초기화용
     // void enqueueToMcu(uint16_t cid, const BKEL_Frame& frame);
+    // 요청에서 lastRequestedSid를 저장 (Diag 요청만)
+    void onDiagRequestArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& reqFrame);
+
+    // UART Rx 유효 프레임을 SID 매칭으로 세션에 할당
+    void routeUartRxBySid(const BKEL_Frame& uartFrame);
+
+    bool popNextMcuFrame(BKEL_Frame& out);
+
+    // std::shared_ptr<Session> getSession(uint16_t cid);
+    // void clearSessions();
 
 private:
     SessionManager() = default;
