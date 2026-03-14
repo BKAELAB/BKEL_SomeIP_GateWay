@@ -1,35 +1,19 @@
 #include "transport/TcpServer.hpp"
+#include "core/SessionManager.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdexcept>
 #include <iostream>
+#include <arpa/inet.h>
 
-/* SessionManager 구현 후 수정할 것
- * 1. TcpServer 생성자 - RxCallback
- * 2. 테스트용 함수 sendToFirst()
- */
-
-TcpServer::TcpServer(const std::string& ip, int port, TcpTransport::RxCallback rxCallback)
-    : ip_(ip), port_(port), serverFd_(-1), pendingFd_(-1), running_(false), rxCallback_(rxCallback) 
-    {
-        
-    }
+TcpServer::TcpServer(int port)
+    : port_(port), serverFd_(-1), pendingFd_(-1), running_(false) {}
 
 TcpServer::~TcpServer() {
     if (running_) {  // 아직 안 끝났을 때만 shutdown 호출
         shutdown();
-    }
-}
-
-// SessionManager 완성 후 제거
-void TcpServer::sendToFirst(const std::vector<uint8_t>& data) {
-    std::lock_guard<std::mutex> lock(transportsMutex_);
-    if (!transports_.empty()) {
-        transports_[0]->sendData(data);
-    } else {
-        std::cerr << "[TcpServer] sendToFirst: no client connected" << std::endl;
     }
 }
 
@@ -89,13 +73,6 @@ void TcpServer::shutdown() {
         acceptThread_.join();
         std::cout << "[TcpServer] acceptThread done" << std::endl;
     }
-    
-    {
-        std::lock_guard<std::mutex> lock(transportsMutex_);
-        for (auto& transport : transports_) {
-            transport->stop();
-        }
-    }
 }
 
 void TcpServer::acceptLoop() {
@@ -116,11 +93,13 @@ void TcpServer::acceptLoop() {
             std::lock_guard<std::mutex> lock(pendingMutex_);
             pendingFd_ = clientFd;
         }
+        // ClientIp 추출
+        char clientIpBuf[INET_ADDRSTRLEN] = {};
+        inet_ntop(AF_INET, &clientAddr.sin_addr, clientIpBuf, sizeof(clientIpBuf));
+        std::string clientIp(clientIpBuf);
 
         // Req-B-20: 연결 시 CID를 클라이언트로부터 수신
-        // 실제 CID 수신 프로토콜에 맞게 수정 필요.
-        char cidBuf[64] = {};
-        ssize_t n = recv(clientFd, cidBuf, sizeof(cidBuf) - 1, 0);
+        auto cid = receivedCid(clientFd);
 
         // recv() 완료 후 pendingFd_ 초기화
         {
@@ -128,23 +107,46 @@ void TcpServer::acceptLoop() {
             pendingFd_ = -1;
         }
 
-        if (n <= 0) {
+        if (!cid) {     // nullopt 체크, (이후 cid 역참조 안전)
             ::close(clientFd);
             continue;
         }
-        std::string cid(cidBuf, n);
-        // cid '\n' '\r' 제거
-        while (!cid.empty() && (cid.back() == '\n' || cid.back() == '\r')) {
-            cid.pop_back();
-        }
-        std::cout << "[TcpServer] Client connection, CID=" << cid << std::endl;
+        std::cout << "[TcpServer] Client connection, CID=" << *cid << std::endl;
 
-        auto transport = std::make_shared<TcpTransport>(clientFd, cid, rxCallback_);
-        {
-            std::lock_guard<std::mutex> lock(transportsMutex_);
-            transports_.push_back(transport);
-        }
-        transport->start();
+        // Req-B-23: TCP 연결 시 Session 생성
+        auto transport = std::make_unique<TcpTransport>(clientFd, *cid);                  // transport 생성
+        SessionManager::getInstance().addSession(*cid, clientIp, std::move(transport));   // Session 생성
+
+        std::cout << "[TcpServer] Session count=" << SessionManager::getInstance().getSessionCount() << std::endl;
     }
     std::cout << "[TcpServer] acceptLoop exit" << std::endl;
+}
+
+// Req-B-20 추가: 클라이언트 접속 후, SID:0X30 Register CID 등록 패킷 받아옴
+// 패킷 수신 후 CID 반환
+std::optional<uint16_t> TcpServer::receivedCid(int clientFd) {
+    // SOF 확인
+    uint8_t sof = 0;
+    if (recv(clientFd, &sof, 1, MSG_WAITALL) != 1) return std::nullopt;
+    if (sof != SOF_DATA_VALUE) return std::nullopt;
+
+    // Header 수신
+    BKEL_Data_Frame_Header hdr{};
+    if (recv(clientFd, &hdr, BKEL_HDR_SIZE, MSG_WAITALL) != BKEL_HDR_SIZE) return std::nullopt;
+
+    // sid 검증 0x30: Register CID
+    if (hdr.sid != 0x30) return std::nullopt;
+
+    // payload skip
+    if (hdr.dlc > 0) {
+        std::vector<uint8_t> dummy(hdr.dlc);
+        if (recv(clientFd, dummy.data(), hdr.dlc, MSG_WAITALL) != hdr.dlc)
+            return std::nullopt;
+    }
+
+    // CID 수신
+    uint16_t cid = 0;
+    if (recv(clientFd, &cid, BKEL_CID_SIZE, MSG_WAITALL) != BKEL_CID_SIZE) return std::nullopt;
+
+    return cid;
 }

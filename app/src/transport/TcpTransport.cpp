@@ -1,10 +1,17 @@
 #include "transport/TcpTransport.hpp"
+#include "core/SessionManager.hpp"
 #include <sys/socket.h>
 #include <unistd.h>
 #include <iostream>
 
-TcpTransport::TcpTransport(int clientFd, const std::string& cid, RxCallback rxCallback)
-    : clientFd_(clientFd), cid_(cid), rxCallback_(rxCallback), running_(false) {}
+TcpTransport::TcpTransport(int clientFd, uint16_t cid)
+    : clientFd_(clientFd), cid_(cid), running_(false) 
+{
+    // Req-B-34: TCP Rx 파싱 완료 시 CID로 Session 찾아 MCU 큐에 전달
+    parser_.setCallback([this](const BKEL_Frame& frame) {
+        SessionManager::getInstance().forwardToMcu(cid_, frame);
+    });
+}
 
 TcpTransport::~TcpTransport() {
     if (running_) {
@@ -32,9 +39,15 @@ void TcpTransport::stop() {
     //Tx: 큐에 데이터 없어도 TxThread 깨워서 종료
     txCv_.notify_all();
 
-    if (rxThread_.joinable()) rxThread_.join();
+    if (rxThread_.joinable()) {
+        if (rxThread_.get_id() != std::this_thread::get_id()) {
+            rxThread_.join(); // 외부 스레드에서 stop() 호출 시 rxThread 종료 대기
+        } else {
+            rxThread_.detach(); // rxLoop 내부에서 stop() 호출 시 자기 자신은 join 불가-> detach
+        }                       // 클라이언트가 먼저 종료하는 경우
+    }
+    // txThread 는 자기 자신을 join 하는 경우 없음.
     if (txThread_.joinable()) txThread_.join();
-
 }
 
 void TcpTransport::sendData(const std::vector<uint8_t>& data) {
@@ -53,19 +66,14 @@ void TcpTransport::rxLoop() {
         ssize_t n = recv(clientFd_, buf, sizeof(buf), 0);
         if (n <= 0) {
             // == 0 연결끊김, -1 에러
-            std::cout << "[TcpTransport] CID=" << cid_ << " disconnected" << std::endl;
+            SessionManager::getInstance().removeSession(cid_);    // == 0 이면 연결끊김, Session 삭제
             running_ = false;
-            txCv_.notify_all();     // rx끊김 감지했을 경우, txLoop 깨워서 종료
             break;
         }
         std::vector<uint8_t> data(buf, buf + n);
-
-        // 패킷 포맷 확인 후 파싱 로직 교체
-        if (rxCallback_) {
-            rxCallback_(cid_, data);
-        }
+        parser_.push(data.data(), data.size());
     }
-    std::cout << "[TcpTransport] rxLoop exited, CID=" << cid_ << std::endl;
+    std::cout << "[TcpTransport] rxLoop exited" << std::endl;
 }
 
 void TcpTransport::txLoop() {
@@ -84,9 +92,21 @@ void TcpTransport::txLoop() {
             lock.unlock();
 
             if (clientFd_ >= 0) {
-                send(clientFd_, data.data(), data.size(), 0);
+                size_t totalSent = 0;
+                while (totalSent < data.size()) {
+                    ssize_t sent = send(clientFd_,
+                                        data.data() + totalSent,    // 보낸 만큼 포인터 이동
+                                        data.size() - totalSent,    // 남은 크기만큼
+                                        0);
+                    if (sent < 0) {
+                        // 에러 처리
+                        std::cerr << "[TcpTransport] send failed, CID=" << cid_ << std::endl;
+                        // removeSession or disconnect 처리
+                        break;
+                    } 
+                    totalSent += sent;
+                }
             }
-
             lock.lock();
         }
     }
