@@ -15,6 +15,7 @@ FetchContent_MakeAvailable(nlohmann_json)
 
 add_executable(bkel_gateway
     src/main.cpp
+    src/core/Engine.cpp
     src/core/Session.cpp
     src/core/SessionManager.cpp
     src/transport/UartTransport.cpp

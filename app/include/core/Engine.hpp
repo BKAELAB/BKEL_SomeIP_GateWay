@@ -1,15 +1,17 @@
-class Engine 
+class Engine
 {
-private:
-    Engine();
-    ~Engine();
-    
-    static Engine m_Inst;
 public:
-    
-    static Engine& Get_Engine_Inst() 
+    static Engine& Get()
     {
-        return m_Inst;    
+        static Engine instance;
+        return instance;
     }
 
+    void Run();
+private:
+    Engine() {}
+    ~Engine() {}
+
+    Engine(const Engine&) = delete;
+    Engine& operator=(const Engine&) = delete;
 };
