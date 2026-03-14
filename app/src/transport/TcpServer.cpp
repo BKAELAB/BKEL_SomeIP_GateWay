@@ -12,7 +12,10 @@
  */
 
 TcpServer::TcpServer(const std::string& ip, int port, TcpTransport::RxCallback rxCallback)
-    : ip_(ip), port_(port), serverFd_(-1), pendingFd_(-1), running_(false), rxCallback_(rxCallback) {}
+    : ip_(ip), port_(port), serverFd_(-1), pendingFd_(-1), running_(false), rxCallback_(rxCallback) 
+    {
+        
+    }
 
 TcpServer::~TcpServer() {
     if (running_) {  // 아직 안 끝났을 때만 shutdown 호출

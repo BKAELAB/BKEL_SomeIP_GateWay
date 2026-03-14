@@ -1,17 +1,19 @@
 #include "main.h"
-#include <unistd.h>
-#include <cstdio>
-#include <vector>
-#include <csignal> // 테스트 용으로 추가
-
-static std::atomic<bool> g_running(true);
-static TcpServer* g_server = nullptr;
 
 int main(int argc, char* argv[])
 {   
+    /* Core */
+    Engine engine = Engine{};
+
     /* TCP 초기화 */
+    TcpServer server = TcpServer{};
+
     /* UART 초기화 */
-   
+    UART uart = UART{};
+
+    /* Loop */
+    while(1);
+
     return 0;
 }
 
