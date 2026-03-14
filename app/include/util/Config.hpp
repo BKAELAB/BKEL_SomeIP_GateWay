@@ -2,6 +2,8 @@
 
 #include <string>
 
+// #define _UART_DEBUG_
+
 struct TcpConfig {
     std::string ip;
     int port;

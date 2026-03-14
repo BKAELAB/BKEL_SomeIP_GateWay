@@ -1,0 +1,30 @@
+TCP , UART , PacketParser , SessionManager
+
+1. TCP 관련
+    json 가져오기
+    시그널 테스트 관련 설정
+
+2. UART 
+    uart , parser 객체 생성
+
+    // --------
+// 전송 함수
+void send_command_packet(UART& uart, uint8_t sid, uint8_t type, uint8_t data, uint16_t cid) {
+    auto frame = PacketEncoder::build_frame(sid, type, &data, 1, cid);
+    
+    printf("\n[TX] 전송 데이터: ");
+    for(uint8_t b : frame) printf("%02X ", b);
+    printf(" (SID: 0x%02X, CID: %u)\n", sid, cid);
+
+    // 하위 계층의 전송 함수 호출
+    uart.writeData(frame.data(), (uint32_t)frame.size());
+}
+// --------
+
+void signalHandler(int signum) {
+    std::cout << "\n[Main] Signal " << signum << " received, shutting down..." << std::endl;
+    if (g_server) {
+        g_server->shutdown();
+    }
+    g_running = false;
+}

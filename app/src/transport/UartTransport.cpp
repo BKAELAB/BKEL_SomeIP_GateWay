@@ -9,16 +9,17 @@
 #include <atomic>
 
 // 통신 환경(termios) 설정
-UART::UART(const char* device, int baudrate) 
+UART::UART(const char* device, int baudrate)    // 생성자 삭제
     : fd(-1), running(false), parser(nullptr)
 {
+    /* parser = Get_PacketParser(); */
     fd = open(device, O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0) {
         perror("[UART] Open failed");
         exit(1);
     }
 
-    struct termios tty{};
+    struct termios tty{};   // 기술 부채 1 발견
     if (tcgetattr(fd, &tty) != 0) {
         perror("[UART] tcgetattr failed");
         exit(1);
@@ -42,7 +43,10 @@ UART::UART(const char* device, int baudrate)
         perror("[UART] tcsetattr failed");
         exit(1);
     }
+
+#ifdef _UART_DEBUG_
     std::cout << "[UART] Connected to: " << device << " at " << baudrate << " bps" << std::endl;
+#endif
 }
 
 UART::~UART() {
@@ -50,10 +54,10 @@ UART::~UART() {
     if (fd >= 0) close(fd);
 }
 
-void UART::start(PacketParser* p) {
+void UART::start(PacketParser* p) { // Parser 는 PacketParser 에서 Get 해서 쓰게끔
     if (running) return;
     this->parser = p;
-    running = true;
+    running = true;     // 테스트 해보고 잘되게끔 바꾸기.
     rxThread = std::thread(&UART::rxWorker, this);
 }
 
@@ -76,13 +80,22 @@ void UART::stop() {
 uint32_t UART::writeData(const uint8_t* data, uint32_t len) {
     
     if (fd < 0 || data == nullptr || len == 0) return 0;
-    // 락 걸기 전 로그
-    // printf("[TRY] Thread ID: %ld\n", std::this_thread::get_id());
+
+#ifdef _UART_DEBUG_    // 락 걸기전 
+    printf("[TRY] Thread ID: %ld\n", std::this_thread::get_id());
+#endif
+    
     std::lock_guard<std::mutex> lock(txMtx);    // 여러 스레드가 동시에 write 하지 못하게
-    // 락 통과 후 로그
-    // printf("  [LOCKED] Thread ID: %ld 전송 중\n", std::this_thread::get_id());
+    
+#ifdef _UART_DEBUG_     // 락 통과 후
+    printf("  [LOCKED] Thread ID: %ld 전송 중\n", std::this_thread::get_id());
+#endif
+
     ssize_t sent = write(fd, data, len);
-    // 전송 끝
-    // printf("  [UNLOCKED] Thread ID: %ld 완료\n", std::this_thread::get_id());
+
+#ifdef _UART_DEBUG_
+    printf("  [UNLOCKED] Thread ID: %ld 완료\n", std::this_thread::get_id());
+#endif
+
     return (sent < 0) ? 0 : (uint32_t)sent;
 }

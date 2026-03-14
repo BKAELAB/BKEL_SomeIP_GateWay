@@ -8,7 +8,7 @@
 #include <iostream>
 #include <arpa/inet.h>
 
-TcpServer::TcpServer(int port)
+TcpServer::TcpServer(int port)  // 파라미터 없이 리팩토링
     : port_(port), serverFd_(-1), pendingFd_(-1), running_(false) {}
 
 TcpServer::~TcpServer() {
@@ -43,7 +43,9 @@ void TcpServer::startup() {
 
     // Req-B-20: Accept를 백그라운드 Thread에서 처리
     acceptThread_ = std::thread(&TcpServer::acceptLoop, this);
+#ifdef _TCP_DEBUG_
     std::cout << "[TcpServer] Listening on port " << port_ << std::endl;
+#endif
 }
 
 
@@ -84,7 +86,7 @@ void TcpServer::acceptLoop() {
         int clientFd = accept(serverFd_, (sockaddr*)&clientAddr, &addrLen);
         if (clientFd < 0) {
             if (!running_)  break;  // shutdown() 호출 시 정상 종료
-            std::cerr << "[TcpServer] accept() failed" << std::endl;
+            std::cerr << "[TcpServer] accept() failed" << std::endl;    // 로그 남기기 시간찍어서,
             continue;
         }
 
@@ -93,13 +95,14 @@ void TcpServer::acceptLoop() {
             std::lock_guard<std::mutex> lock(pendingMutex_);
             pendingFd_ = clientFd;
         }
+
         // ClientIp 추출
         char clientIpBuf[INET_ADDRSTRLEN] = {};
         inet_ntop(AF_INET, &clientAddr.sin_addr, clientIpBuf, sizeof(clientIpBuf));
         std::string clientIp(clientIpBuf);
 
         // Req-B-20: 연결 시 CID를 클라이언트로부터 수신
-        auto cid = receivedCid(clientFd);
+        auto cid = receivedCid(clientFd);       // 이놈을 실시간으로 바꿔야함.
 
         // recv() 완료 후 pendingFd_ 초기화
         {
