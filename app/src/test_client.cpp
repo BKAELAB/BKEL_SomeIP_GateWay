@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
     std::cout << "[Client] BKEL Frame sent" << std::endl;
 
     // 서버 응답 수신
-    PacketParser parser;
+    PacketParser& parser = PacketParser::Get();
     parser.setCallback([](const BKEL_Frame& frame) {
         std::cout << "[Client] Frame received!" << std::endl;
         std::cout << "  SID : 0x" << std::hex << (int)frame.sid << std::endl;

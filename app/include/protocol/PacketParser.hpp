@@ -10,6 +10,12 @@
 class PacketParser
 {
 public:
+    static PacketParser& Get()
+    {
+        static PacketParser instance;
+        return instance;
+    }
+
     void push(const uint8_t* data, size_t len);
 
     void setCallback(std::function<void(const BKEL_Frame&)> cb) {
@@ -23,4 +29,7 @@ private:
 
     void parse();
     void onFrame(const BKEL_Frame& frame);
+
+    PacketParser(){}
+    ~PacketParser(){}
 };
