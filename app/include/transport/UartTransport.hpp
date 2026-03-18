@@ -12,8 +12,6 @@
 #define DEFAULT_UART_DEVICE "/dev/ttyAMA0"
 #define DEFAULT_BAUDRATE     B115200
 
-class PacketParser;
-
 /**
  * 싱글톤 패턴: 시스템 내 단 하나의 UART 인스턴스 보장
  * Tx 스레드 풀: 비동기로 전송 대기열(Queue) 처리
@@ -33,9 +31,8 @@ public:
     // fd가 -1이 아니면 장치가 성공적으로 open된 상태입니다.
     bool isOpened() const { return fd != -1; }
 
-    // 서비스 시작 (Rx 스레드 1개, Tx 스레드 워커들 생성)
-    // 리턴 타입을 bool로 하여 시작 성공 여부를 확인할 수 있게 합니다.
-    bool start(PacketParser* p);
+
+    void start();
     
     // 모든 스레드 종료 및 리소스 해제
     void stop();
@@ -46,17 +43,17 @@ public:
 private:
     // 생성자 private 설정 (싱글톤)
     UART();
-
+    void UARTInit();
     void rxWorker(); // 수신 전용 워커
     void txWorker(); // 전송 전용 워커
 
     int fd;
-    std::atomic<bool> running;
-    PacketParser* parser;
+    int running;
 
     // 스레드 관리
     std::thread rxThread;
-    std::vector<std::thread> txThreadPool;
+    std::thread txThread;
+    // std::vector<std::thread> txThreadPool;
 
     // Tx 동기화 도구
     std::mutex txMtx;

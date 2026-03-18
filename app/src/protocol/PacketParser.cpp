@@ -13,85 +13,6 @@ void PacketParser::push(const uint8_t* data, size_t len)
 }
 
 
-// void PacketParser::parse()
-// {
-
-//     while (true)
-//     {
-//         // if (rxBuffer.size() < BKEL_SOF_SIZE + BKEL_HDR_SIZE)
-//         //     return;
-
-//         /* SOF 탐색 */
-//         // if (rxBuffer[0] != SOF_DATA_VALUE)
-//         // {
-//         //     rxBuffer.erase(rxBuffer.begin());
-//         //     continue;
-//         // }
-//         /* 1. SOF(0x5A) 탐색 */
-//         if (rxBuffer[0] != SOF_DATA_VALUE)
-//         {
-//             // 0x5A가 나올 때까지 버퍼를 뒤져서 한꺼번에 날려버립니다.
-//             auto it = std::find(rxBuffer.begin() + 1, rxBuffer.end(), SOF_DATA_VALUE);
-//             rxBuffer.erase(rxBuffer.begin(), it);
-//             continue; // 다시 처음부터 (이제 맨 앞은 0x5A이거나 버퍼가 비었음)
-//         }
-
-//         /* 2. 헤더 읽기 */
-//         BKEL_Data_Frame_Header hdr;
-//         std::memcpy(&hdr,
-//                     rxBuffer.data() + BKEL_SOF_SIZE,
-//                     BKEL_HDR_SIZE);
-//         // DLC 검증
-//         if (hdr.dlc > BKEL_MAX_PAYLOAD)
-//         {
-//             rxBuffer.erase(rxBuffer.begin());
-//             continue;
-//         }
-//         /* 3. 전체 길이 계산 */
-//         size_t frameLen =
-//             BKEL_SOF_SIZE +
-//             BKEL_HDR_SIZE +
-//             hdr.dlc +
-//             BKEL_CID_SIZE +
-//             BKEL_CRC_SIZE;
-
-//         if (rxBuffer.size() < frameLen)
-//             return;
-
-//         /* 4. CRC 검증 */
-//         const uint8_t* payload =
-//             rxBuffer.data() + BKEL_SOF_SIZE + BKEL_HDR_SIZE;
-
-//         const uint8_t* cidPtr = payload + hdr.dlc;
-//         const uint8_t* crcPtr = cidPtr + BKEL_CID_SIZE;
-
-//         uint16_t cid;
-//         std::memcpy(&cid, cidPtr, sizeof(cid));
-
-//         uint8_t expectedCrc =
-//             calc_crc8(rxBuffer.data() + BKEL_SOF_SIZE,
-//                         BKEL_HDR_SIZE + hdr.dlc + BKEL_CID_SIZE);
-
-//         if (expectedCrc != *crcPtr)
-//         {
-//              rxBuffer.erase(rxBuffer.begin());
-//              continue;
-//         }
-
-//         /* === 정상 프레임 === */
-//         BKEL_Frame frame;
-//         frame.sid  = hdr.sid;
-//         frame.type = hdr.type;
-//         frame.dlc  = hdr.dlc;
-//         frame.cid  = cid;
-//         frame.payload.assign(payload, payload + hdr.dlc);
-        
-//         onFrame(frame);
-
-//         rxBuffer.erase(rxBuffer.begin(),
-//                         rxBuffer.begin() + frameLen);
-//     }
-// }
 void PacketParser::parse()
 {
     while (rxBuffer.size() >= (BKEL_SOF_SIZE + BKEL_HDR_SIZE))
@@ -153,7 +74,7 @@ void PacketParser::parse()
     }
 }
 void PacketParser::onFrame(const BKEL_Frame& frame) {
-    // [상세 헤더 정보 출력] SID, TYPE, DLC, CID를 한눈에!
+    // 
     printf("\n[RX FRAME] SID: 0x%02X | TYPE: 0x%02X | DLC: %u | CID: %u\n", 
            frame.sid, frame.type, (uint32_t)frame.payload.size(), frame.cid);
  
@@ -198,13 +119,20 @@ void PacketParser::onFrame(const BKEL_Frame& frame) {
             }
             break;
 
-        /* [추가] 광고(Broadcast) 패킷이나 기타 패킷 처리 */
+        /* Broadcast 패킷이나 기타 패킷 처리 */
         default:
-            printf("[BKEL FRAME]\n");
-            printf(" SID : 0x%02X\n", frame.sid);
-            printf(" TYPE: 0x%02X\n", frame.type);
-            printf(" DLC : %u\n", frame.dlc);
-            printf(" CID : %u\n", frame.cid);
+            // printf("[BKEL FRAME]\n");
+            // printf(" SID : 0x%02X\n", frame.sid);
+            // printf(" TYPE: 0x%02X\n", frame.type);
+            // printf(" DLC : %u\n", frame.dlc);
+            // printf(" CID : %u\n", frame.cid);
+              if (!frame.payload.empty())
+            {
+                printf(" PAYLOAD: ");
+                for (auto b : frame.payload)
+                    printf("%02X ", b);
+                printf("\n");
+            }
             break;
     }
     printf("----------------------------------------------------------\n");
