@@ -25,6 +25,7 @@ add_executable(bkel_gateway
     src/protocol/PacketParser.cpp
     src/protocol/PacketEncoder.cpp
     src/util/Config.cpp
+    src/util/Logger.cpp
 )
 
 target_include_directories(bkel_gateway PRIVATE include)
