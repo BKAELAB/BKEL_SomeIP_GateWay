@@ -9,6 +9,7 @@
 #include <core/Engine.hpp>
 #include <core/Session.hpp>
 #include <core/SessionManager.hpp>
+#include <core/CommandService.hpp>
 #include <util/Config.hpp>
 
 #include <core/Types.hpp>
@@ -21,5 +22,4 @@
 #include <cstdio>
 #include <vector>
 #include <csignal> // 테스트 용으로 추가
-
-#define DEFAULT_UART_DEVICE "/dev/ttyAMA0"
+#include <algorithm>

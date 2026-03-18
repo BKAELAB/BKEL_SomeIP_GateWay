@@ -4,6 +4,7 @@ public:
     static Engine& Get()
     {
         static Engine instance;
+        static PacketParser parser;
         return instance;
     }
 
