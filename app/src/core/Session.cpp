@@ -26,7 +26,7 @@ uint8_t Session::getLastRequestedSid() const {
 
 void Session::enqueueToMcu(const BKEL_Frame& frame) {
     std::cout << "[Session] enqueueToMcu, CID=" << cid_ << " SID=0x" << std::hex << (int)frame.sid << std::endl;
-    toMcuQueue_.push_back(frame);       // MCU로 보낼 패킷 목록에 담기
+    toMcuQueue_.push(frame);       // MCU로 보낼 패킷 목록에 담기
 }
 
 // MCU로 보낼 패킷을 꺼내는 함수
@@ -36,12 +36,12 @@ bool Session::popMcuFrame(BKEL_Frame& out)
         return false;
 
     out = toMcuQueue_.front();
-    toMcuQueue_.erase(toMcuQueue_.begin());
+    toMcuQueue_.pop();
     return true;
 }
 
 void Session::enqueueToClient(const BKEL_Frame& frame) {
-    toClientQueue_.push_back(frame);        // 되돌려 받을 패킷 목록에 담기
+    toClientQueue_.push(frame);        // 되돌려 받을 패킷 목록에 담기
 }
 
 void Session::setBlocked(bool blocked) {
@@ -53,7 +53,8 @@ bool Session::isBlocked() const {
 }
 
 void Session::sendToClient() { // MCU에서 받은 패킷 (toClientQueue) TCP로 보냄
-    for (auto& frame : toClientQueue_) {
+    while (!toClientQueue_.empty()) {
+        auto frame = toClientQueue_.front();
         auto data = PacketEncoder::build_frame(
             frame.sid,
             frame.type,
@@ -62,6 +63,6 @@ void Session::sendToClient() { // MCU에서 받은 패킷 (toClientQueue) TCP로
             frame.cid
         );
         transport_->sendData(data);
+        toClientQueue_.pop();
     }
-    toClientQueue_.clear();
 }

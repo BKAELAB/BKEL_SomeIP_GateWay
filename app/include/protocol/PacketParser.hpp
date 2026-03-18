@@ -28,7 +28,7 @@ private:
     std::mutex mtx;
 
     void parse();
-    void onFrame(const BKEL_Frame& frame);
+    void onFrame(const BKEL_Frame frame);
 
     PacketParser(){}
     ~PacketParser(){}

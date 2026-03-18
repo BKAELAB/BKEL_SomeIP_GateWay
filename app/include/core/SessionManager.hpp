@@ -15,8 +15,8 @@ public:
     void removeSession(uint16_t cid);
 
     // 통신
-    void broadcast(const BKEL_Frame& frame);
-    void sendToSession(uint16_t cid, const BKEL_Frame& frame);
+    void broadcast(const BKEL_Frame frame);
+    void sendToSession(uint16_t cid, const BKEL_Frame frame);
 
     // 프레임 수신 시 세션 상태 갱신(최근 SID 기록 등)
     void onFrameArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& frame);

@@ -43,8 +43,8 @@ private:
     uint8_t lastRequestedSid_;
     std::unique_ptr<TcpTransport> transport_; 
 
-    std::vector<BKEL_Frame> toMcuQueue_;     // MCU로 보낼 패킷 목록
-    std::vector<BKEL_Frame> toClientQueue_;  // 되돌려 받을 패킷 목록
+    std::queue<BKEL_Frame> toMcuQueue_;     // MCU로 보낼 패킷 목록
+    std::queue<BKEL_Frame> toClientQueue_;  // 되돌려 받을 패킷 목록
 
     int maliciousScore_;
     bool isBlocked_;

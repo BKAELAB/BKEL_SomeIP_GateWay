@@ -51,14 +51,14 @@ void SessionManager::onFrameArrived(uint16_t cid, const std::string& ip, const B
     sessions_[cid]->updateLastRequestedSid(frame.sid);
 }
 
-void SessionManager::broadcast(const BKEL_Frame& frame) {
+void SessionManager::broadcast(const BKEL_Frame frame) {
     std::lock_guard<std::mutex> lock(mtx_);
     for (auto& kv : sessions_) {
         kv.second->enqueueToClient(frame);
     }
 }
 
-void SessionManager::sendToSession(uint16_t cid, const BKEL_Frame& frame) {
+void SessionManager::sendToSession(uint16_t cid, const BKEL_Frame frame) {
     std::lock_guard<std::mutex> lock(mtx_);
     auto s = findSessionNoLock_(cid);
     if (!s) return;
