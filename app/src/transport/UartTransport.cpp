@@ -110,13 +110,21 @@ void UART::UARTInit(){
     fd = open(device, O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0) {
         perror("[UART] 장치를 열 수 없습니다");
+#ifdef UART_REQUIRED
         exit(1);
+#else
+        return;
+#endif
     }
 
     struct termios tty{};
     if (tcgetattr(fd, &tty) != 0) {
         perror("[UART] tcgetattr 실패");
+#ifdef UART_REQUIRED
         exit(1);
+#else
+        return;
+#endif
     }
 
     // 기본 시리얼 통신 설정 (8N1)
@@ -134,6 +142,10 @@ void UART::UARTInit(){
 
     if (tcsetattr(fd, TCSANOW, &tty) != 0) {
         perror("[UART] tcsetattr 실패");
+#ifdef UART_REQUIRED
         exit(1);
+#else
+        return;
+#endif
     }
 }
