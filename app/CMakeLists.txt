@@ -16,12 +16,12 @@ FetchContent_MakeAvailable(nlohmann_json)
 add_executable(bkel_gateway
     src/main.cpp
     src/core/Engine.cpp
-    # src/core/Session.cpp
-    # src/core/SessionManager.cpp
+    src/core/Session.cpp
+    src/core/SessionManager.cpp
     src/core/CommandService.cpp
     src/transport/UartTransport.cpp
-    # src/transport/TcpTransport.cpp
-    # src/transport/TcpServer.cpp
+    src/transport/TcpTransport.cpp
+    src/transport/TcpServer.cpp
     # src/transport/TlsTransport.cpp
     src/protocol/PacketParser.cpp
     src/protocol/PacketEncoder.cpp

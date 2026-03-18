@@ -1,15 +1,15 @@
 #include "transport/TcpServer.hpp"
 #include "core/SessionManager.hpp"
+#include "util/Config.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdexcept>
 #include <iostream>
-#include <arpa/inet.h>
 
-TcpServer::TcpServer(int port)  // 파라미터 없이 리팩토링
-    : port_(port), serverFd_(-1), pendingFd_(-1), running_(false) {}
+TcpServer::TcpServer()
+    : ip_(""), port_(0), serverFd_(-1), pendingFd_(-1), running_(false) {}
 
 TcpServer::~TcpServer() {
     if (running_) {  // 아직 안 끝났을 때만 shutdown 호출
@@ -18,6 +18,10 @@ TcpServer::~TcpServer() {
 }
 
 void TcpServer::startup() {
+    const auto& cfg = Config::getInstance().get().tcp;
+    ip_   = cfg.ip;
+    port_ = cfg.port;
+
     serverFd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (serverFd_ < 0) throw std::runtime_error("socket() failed");
 

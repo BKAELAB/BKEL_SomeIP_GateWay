@@ -13,13 +13,22 @@
 // Accept 루프는 별도의 백그라운드 Thread에서 동작
 class TcpServer {
 public:
-    explicit TcpServer(int port);
+    static TcpServer& Get() {
+        static TcpServer instance;
+        return instance;
+    }
+
     ~TcpServer();
 
-    void startup();   // AcceptThread 시작
+    void startup();     // Config 로드 후 AcceptThread 시작
     void shutdown();    // 서버 종료
-    
+
+    TcpServer(const TcpServer&) = delete;
+    TcpServer& operator=(const TcpServer&) = delete;
+
 private:
+    TcpServer();
+
     void acceptLoop();  // 백그라운드 Thread 진입점
     std::optional<uint16_t> receivedCid(int clientFd); // 클라이언트 처음 연결 시 cid 반환
 
