@@ -8,12 +8,13 @@
 #include <functional>
 #include <optional>
 #include "transport/TcpTransport.hpp"
+#include "util/Config.hpp"
 
 // Req-B-20: TCP 연결 수락 및 TcpTransport 생성
 // Accept 루프는 별도의 백그라운드 Thread에서 동작
 class TcpServer {
 public:
-    explicit TcpServer(int port);
+    TcpServer();
     ~TcpServer();
 
     void startup();   // AcceptThread 시작

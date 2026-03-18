@@ -78,12 +78,15 @@ size_t SessionManager::getSessionCount() const {
 void SessionManager::onDiagRequestArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& reqFrame) {
     std::lock_guard<std::mutex> lock(mtx_);
 
-    // 수명관리(Add): 없으면 생성
-    if (sessions_.find(cid) == sessions_.end()) {
-        sessions_[cid] = std::make_shared<Session>(cid, ip);
-    }
+    // // 수명관리(Add): 없으면 생성
+    // if (sessions_.find(cid) == sessions_.end()) {
+    //     sessions_[cid] = std::make_shared<Session>(cid, ip);
+    // }
 
-    auto& sess = sessions_[cid];
+    // auto& sess = sessions_[cid];
+    
+    auto sess = findSessionNoLock_(cid);
+    if (!sess) return;  // session 없으면 무시
 
     // Diag 요청일 때만 lastSid 기억
     // reqFrame이 Diag가 아닐 수도 있으니 방어

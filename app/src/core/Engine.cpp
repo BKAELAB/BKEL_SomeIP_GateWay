@@ -5,7 +5,12 @@
 void Engine::Run()
 {
     /* TCP 초기화 */
-    TcpServer server = TcpServer{};
+    TcpServer server;
+    server.startup();
+
     /* UART 초기화 */
-    UART uart = UART{};
+    // UART uart = UART{};
+
+    while(1);
+
 }

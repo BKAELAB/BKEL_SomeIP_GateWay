@@ -8,8 +8,10 @@
 #include <iostream>
 #include <arpa/inet.h>
 
-TcpServer::TcpServer(int port)  // 파라미터 없이 리팩토링
-    : port_(port), serverFd_(-1), pendingFd_(-1), running_(false) {}
+TcpServer::TcpServer()
+    : ip_(Config::getInstance().get().tcp.ip),
+      port_(Config::getInstance().get().tcp.port),
+      serverFd_(-1), pendingFd_(-1), running_(false) {}
 
 TcpServer::~TcpServer() {
     if (running_) {  // 아직 안 끝났을 때만 shutdown 호출
