@@ -1,8 +1,8 @@
 #include "transport/TcpTransport.hpp"
 #include "core/SessionManager.hpp"
+#include "util/Logger.hpp"
 #include <sys/socket.h>
 #include <unistd.h>
-#include <iostream>
 
 TcpTransport::TcpTransport(int clientFd, uint16_t cid)
     : clientFd_(clientFd), cid_(cid), running_(false) 
@@ -73,7 +73,6 @@ void TcpTransport::rxLoop() {
         std::vector<uint8_t> data(buf, buf + n);
         parser_.push(data.data(), data.size());
     }
-    std::cout << "[TcpTransport] rxLoop exited" << std::endl;
 }
 
 void TcpTransport::txLoop() {
@@ -100,7 +99,7 @@ void TcpTransport::txLoop() {
                                         0);
                     if (sent < 0) {
                         // 에러 처리
-                        std::cerr << "[TcpTransport] send failed, CID=" << cid_ << std::endl;
+                        LOG_ERROR("[TcpTransport] send failed, CID=" + std::to_string(cid_));
                         // removeSession or disconnect 처리
                         break;
                     } 
@@ -110,5 +109,4 @@ void TcpTransport::txLoop() {
             lock.lock();
         }
     }
-    std::cout << "[TcpTransport] txLoop exit, CID=" << cid_ << std::endl;
 }

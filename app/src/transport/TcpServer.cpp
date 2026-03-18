@@ -1,12 +1,12 @@
 #include "transport/TcpServer.hpp"
 #include "core/SessionManager.hpp"
+#include "util/Logger.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdexcept>
-#include <iostream>
-#include <arpa/inet.h>
+#include <sstream>
 
 TcpServer::TcpServer()
     : ip_(Config::getInstance().get().tcp.ip),
@@ -45,14 +45,11 @@ void TcpServer::startup() {
 
     // Req-B-20: Accept를 백그라운드 Thread에서 처리
     acceptThread_ = std::thread(&TcpServer::acceptLoop, this);
-#ifdef _TCP_DEBUG_
-    std::cout << "[TcpServer] Listening on port " << port_ << std::endl;
-#endif
+    LOG_INFO("[TcpServer] Listening on port " + std::to_string(port_));
 }
 
 
 void TcpServer::shutdown() {
-    std::cout << "[TcpServer] shutdown() called" << std::endl;
     running_ = false;
 
     if (serverFd_ >= 0) {
@@ -60,7 +57,6 @@ void TcpServer::shutdown() {
         ::close(serverFd_);
         serverFd_ = -1;
     }
-    std::cout << "[TcpServer] serverFd closed" << std::endl;
 
     // recv() 블로킹 해제
     {
@@ -73,9 +69,7 @@ void TcpServer::shutdown() {
     }
 
     if (acceptThread_.joinable()) {
-        std::cout << "[TcpServer] waiting acceptThread..." << std::endl;
         acceptThread_.join();
-        std::cout << "[TcpServer] acceptThread done" << std::endl;
     }
 }
 
@@ -88,7 +82,7 @@ void TcpServer::acceptLoop() {
         int clientFd = accept(serverFd_, (sockaddr*)&clientAddr, &addrLen);
         if (clientFd < 0) {
             if (!running_)  break;  // shutdown() 호출 시 정상 종료
-            std::cerr << "[TcpServer] accept() failed" << std::endl;    // 로그 남기기 시간찍어서,
+            LOG_ERROR("[TcpServer] accept() failed");
             continue;
         }
 
@@ -116,15 +110,12 @@ void TcpServer::acceptLoop() {
             ::close(clientFd);
             continue;
         }
-        std::cout << "[TcpServer] Client connection, CID=" << *cid << std::endl;
+        LOG_INFO("[TcpServer] Client connected, CID=" + std::to_string(*cid) + " IP=" + clientIp);
 
         // Req-B-23: TCP 연결 시 Session 생성
         auto transport = std::make_unique<TcpTransport>(clientFd, *cid);                  // transport 생성
         SessionManager::getInstance().addSession(*cid, clientIp, std::move(transport));   // Session 생성
-
-        std::cout << "[TcpServer] Session count=" << SessionManager::getInstance().getSessionCount() << std::endl;
     }
-    std::cout << "[TcpServer] acceptLoop exit" << std::endl;
 }
 
 // Req-B-20 추가: 클라이언트 접속 후, SID:0X30 Register CID 등록 패킷 받아옴

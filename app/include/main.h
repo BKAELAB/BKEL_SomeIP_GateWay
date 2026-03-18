@@ -10,6 +10,7 @@
 #include <core/Session.hpp>
 #include <core/SessionManager.hpp>
 #include <util/Config.hpp>
+#include <util/Logger.hpp>
 
 #include <core/Types.hpp>
 #include <iostream>

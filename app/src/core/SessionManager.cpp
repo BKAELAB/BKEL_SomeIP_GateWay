@@ -1,6 +1,7 @@
 #include <core/SessionManager.hpp>
 #include <core/Types.hpp>
-#include <iostream>
+#include <util/Logger.hpp>
+#include <sstream>
 
 SessionManager& SessionManager::getInstance() {
     static SessionManager instance;
@@ -24,12 +25,11 @@ void SessionManager::addSession(uint16_t cid, const std::string& ip, std::unique
 void SessionManager::removeSession(uint16_t cid) {
     std::lock_guard<std::mutex> lock(mtx_);
     sessions_.erase(cid);
-    std::cout << "[SessionManager] Session removed, CID=" << cid << " count=" << sessions_.size() << std::endl;
+    LOG_INFO("[SessionManager] Session removed, CID=" + std::to_string(cid));
 }
 
 void SessionManager::forwardToMcu(uint16_t cid, const BKEL_Frame& frame) {
     std::lock_guard<std::mutex> lock(mtx_);
-    std::cout << "[onTcpFrameArrived] cid=" << cid << " frame.cid=" << frame.cid << std::endl;
     auto session = findSessionNoLock_(cid);
     if (!session) return;               // Req-B-34: 일치하는 CID 없을 시, 폐기
         session->enqueueToMcu(frame);   // 일치하는 CID 있을 경우, Session에 패킷 할당
