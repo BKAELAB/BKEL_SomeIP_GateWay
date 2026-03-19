@@ -21,7 +21,7 @@ public:
     // 프레임 수신 시 세션 상태 갱신(최근 SID 기록 등)
     void onFrameArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& frame);
     
-    // 클라이언트에서 프레임 수신 시 cid 확인 후 session 큐에 패킷 넣어줌
+    // client 프레임 수신 시 cid 확인 후 lastRequestedSid 저장, sessionQueue에 넣음
     void forwardToMcu(uint16_t cid, const BKEL_Frame& frame);
     
     // 연결관리
@@ -34,7 +34,7 @@ public:
     // void clearAllForTest(); // 테스트 반복 시 초기화용
     // void enqueueToMcu(uint16_t cid, const BKEL_Frame& frame);
     // 요청에서 lastRequestedSid를 저장 (Diag 요청만)
-    void onDiagRequestArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& reqFrame);
+    // void onDiagRequestArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& reqFrame);
 
     // UART Rx 유효 프레임을 SID 매칭으로 세션에 할당
     void routeUartRxBySid(const BKEL_Frame& uartFrame);
