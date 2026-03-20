@@ -1,6 +1,6 @@
 #include <core/Session.hpp>
 #include <transport/TcpTransport.hpp>
-#include <protocol/PacketParser.hpp>
+#include <protocol/PacketEncoder.hpp>
 #include <utility>
 #include <iostream>
 Session::Session(uint16_t cid, std::string ip, std::unique_ptr<TcpTransport> transport)
@@ -40,9 +40,6 @@ bool Session::popMcuFrame(BKEL_Frame& out)
     return true;
 }
 
-void Session::enqueueToClient(const BKEL_Frame& frame) {
-    toClientQueue_.push_back(frame);        // 되돌려 받을 패킷 목록에 담기
-}
 
 void Session::setBlocked(bool blocked) {
     isBlocked_ = blocked;       // 악의적 행동 관련 차단 여부 정보 담기
@@ -52,16 +49,14 @@ bool Session::isBlocked() const {
     return isBlocked_;
 }
 
-void Session::sendToClient() { // MCU에서 받은 패킷 (toClientQueue) TCP로 보냄
-    for (auto& frame : toClientQueue_) {
-        auto data = PacketEncoder::build_frame(
-            frame.sid,
-            frame.type,
-            frame.payload.data(),
-            frame.dlc,
-            frame.cid
-        );
-        transport_->sendData(data);
-    }
-    toClientQueue_.clear();
+void Session::sendFrame(const BKEL_Frame& frame) {
+    // BKEL_Frame을 바이트 직렬화하여 txQueue에 넣음 (txLoop가 실제 송신)
+    auto data = PacketEncoder::build_frame(
+        frame.sid,
+        frame.type,
+        frame.payload.data(),
+        frame.dlc,
+        frame.cid
+    );
+    transport_->sendData(data);
 }

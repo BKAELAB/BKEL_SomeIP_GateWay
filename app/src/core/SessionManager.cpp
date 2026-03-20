@@ -46,7 +46,7 @@ void SessionManager::onFrameArrived(uint16_t cid, const std::string& ip, const B
 void SessionManager::broadcast(const BKEL_Frame& frame) {
     std::lock_guard<std::mutex> lock(mtx_);
     for (auto& kv : sessions_) {
-        kv.second->enqueueToClient(frame);
+        kv.second->sendFrame(frame);
     }
 }
 
@@ -55,8 +55,7 @@ void SessionManager::sendToSession(uint16_t cid, const BKEL_Frame& frame) {
     auto s = findSessionNoLock_(cid);
     if (!s) return;
 
-    s->enqueueToClient(frame);
-    s->sendToClient();  // Req-B-32: 패킷 TCP 전송
+    s->sendFrame(frame);  // Req-B-32: 패킷 TCP 전송
 }
 
 // 연결된 세션 수 확인
@@ -93,7 +92,7 @@ void SessionManager::routeUartRxBySid(const BKEL_Frame& uartFrame) {
 
         // UART SID == Session lastRequestedSid
         if (sess->getLastRequestedSid() == uartFrame.sid) {
-            sess->enqueueToClient(uartFrame);
+            sess->sendFrame(uartFrame);
         }
     }
 }

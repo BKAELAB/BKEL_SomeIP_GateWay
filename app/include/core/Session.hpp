@@ -20,7 +20,6 @@ public:
 
     // 큐 적재
     void enqueueToMcu(const BKEL_Frame& frame);
-    void enqueueToClient(const BKEL_Frame& frame);
 
     bool popMcuFrame(BKEL_Frame& out);
 
@@ -28,8 +27,8 @@ public:
     void setBlocked(bool blocked);
     bool isBlocked() const;
 
-    // 패킷 Tcp 전송
-    void sendToClient();
+    // BKEL_Frame을 인코딩하여 TCP 전송
+    void sendFrame(const BKEL_Frame& frame);
 
     // 테스트/검증을 위한 최소 getter (Req-B-24/25 확인용)
     // uint8_t getLastRequestedSid() const { return lastRequestedSid_; }
@@ -44,7 +43,6 @@ private:
     std::unique_ptr<TcpTransport> transport_; 
 
     std::vector<BKEL_Frame> toMcuQueue_;     // MCU로 보낼 패킷 목록
-    std::vector<BKEL_Frame> toClientQueue_;  // 되돌려 받을 패킷 목록
 
     int maliciousScore_;
     bool isBlocked_;
