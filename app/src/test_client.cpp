@@ -4,6 +4,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <thread>
+#include <chrono>
 #include <protocol/PacketParser.hpp>
 #include <protocol/PacketEncoder.hpp>
 
@@ -20,7 +22,7 @@ int main(int argc, char* argv[]) {
     
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(8080);
+    addr.sin_port = htons(9999);
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
 
     if (connect(sock, (sockaddr*)&addr, sizeof(addr)) < 0) {
@@ -36,11 +38,18 @@ int main(int argc, char* argv[]) {
     send(sock, cidFrame.data(), cidFrame.size(), 0);
     std::cout << "[Client] CID register packet sent, CID=" << cid << std::endl;
 
-    // Req-B-34 테스트: 서버로 BKEL 패킷 전송   
+    // 송신 스레드: 1초마다 패킷 반복 전송
+    std::thread txThread([&]() {
     uint8_t payload[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-    auto txData = PacketEncoder::build_frame(0x01, 0x01, payload, sizeof(payload), cid);
-    send(sock, txData.data(), txData.size(), 0);
-    std::cout << "[Client] BKEL Frame sent" << std::endl;
+        int seq = 0;
+        while (true) {
+            auto txData = PacketEncoder::build_frame(0x21, 0x01, payload, sizeof(payload), cid);
+            if (send(sock, txData.data(), txData.size(), 0) <= 0) break;
+            std::cout << "[Client] BKEL Frame sent, seq=" << seq++ << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    });
+    txThread.detach();
 
     // 서버 응답 수신
     PacketParser& parser = PacketParser::Get();

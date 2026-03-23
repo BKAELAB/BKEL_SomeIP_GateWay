@@ -1,9 +1,8 @@
+#include <core/SessionManager.hpp>
 #include <protocol/PacketParser.hpp>
 #include "main.h"
 #include <iostream>
 #include <string>
-
-
 
 void PacketParser::push(const uint8_t* data, size_t len)
 {
@@ -73,8 +72,23 @@ void PacketParser::parse()
         rxBuffer.erase(rxBuffer.begin(), rxBuffer.begin() + frameLen);
     }
 }
-void PacketParser::onFrame(const BKEL_Frame& frame) {
-    // 
+
+void PacketParser::onFrame(const BKEL_Frame frame) {
+    // if (callback) {
+    //     callback(frame);
+    // }
+
+    if(frame.sid == 0x01) {
+        SessionManager::getInstance().broadcast(frame);
+    }
+    // else if(isDiagSid(frame.sid)){
+    else{
+        SessionManager::getInstance().routeUartRxBySid(frame);
+    }
+    // else {
+    //     SessionManager::getInstance().sendToSession(frame.cid, frame);
+    // }
+   
     printf("\n[RX FRAME] SID: 0x%02X | TYPE: 0x%02X | DLC: %u | CID: %u\n", 
            frame.sid, frame.type, (uint32_t)frame.payload.size(), frame.cid);
  
@@ -136,6 +150,8 @@ void PacketParser::onFrame(const BKEL_Frame& frame) {
             break;
     }
     printf("----------------------------------------------------------\n");
+    
+    
 }
 // void PacketParser::onFrame(const BKEL_Frame& frame)
 // {

@@ -1,5 +1,6 @@
 #include "transport/UartTransport.hpp"
 #include "protocol/PacketParser.hpp"
+#include "core/SessionManager.hpp"
 #include "util/Config.hpp"
 #include <iostream>
 #include <fcntl.h>

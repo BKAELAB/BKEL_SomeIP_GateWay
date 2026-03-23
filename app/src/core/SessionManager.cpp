@@ -43,7 +43,7 @@ void SessionManager::onFrameArrived(uint16_t cid, const std::string& ip, const B
     sessions_[cid]->updateLastRequestedSid(frame.sid);
 }
 
-void SessionManager::broadcast(const BKEL_Frame& frame) {
+void SessionManager::broadcast(const BKEL_Frame frame) {
     std::lock_guard<std::mutex> lock(mtx_);
     for (auto& kv : sessions_) {
         kv.second->sendFrame(frame);
@@ -83,7 +83,7 @@ void SessionManager::forwardToMcu(uint16_t cid, const BKEL_Frame& reqFrame) {
 // UART Rx 유효 프레임 할당
 // uartFrame.sid 와 각 Session의 lastRequestedSid가 일치하는 곳에 할당
 // 겹치는 Session이 존재하면 모두 할당
-void SessionManager::routeUartRxBySid(const BKEL_Frame& uartFrame) {
+void SessionManager::routeUartRxBySid(const BKEL_Frame uartFrame) {
     std::lock_guard<std::mutex> lock(mtx_);
 
     for (auto& kv : sessions_) {
