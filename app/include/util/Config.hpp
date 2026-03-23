@@ -3,7 +3,7 @@
 #include <string>
 
 // #define UART_USE_DEBUG
-// #define COMMAND_TEST
+ #define COMMAND_TEST
 // #define UART_REQUIRED   // 정의 시 UART 장치 없으면 exit(1), 미정의 시 경고만 출력하고 계속 실행
 struct TcpConfig {
     std::string ip;

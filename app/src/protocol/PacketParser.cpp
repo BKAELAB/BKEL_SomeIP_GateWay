@@ -74,20 +74,14 @@ void PacketParser::parse()
 }
 
 void PacketParser::onFrame(const BKEL_Frame frame) {
-    // if (callback) {
-    //     callback(frame);
-    // }
 
     if(frame.sid == 0x01) {
         SessionManager::getInstance().broadcast(frame);
     }
-    // else if(isDiagSid(frame.sid)){
     else{
         SessionManager::getInstance().routeUartRxBySid(frame);
     }
-    // else {
-    //     SessionManager::getInstance().sendToSession(frame.cid, frame);
-    // }
+
    
     printf("\n[RX FRAME] SID: 0x%02X | TYPE: 0x%02X | DLC: %u | CID: %u\n", 
            frame.sid, frame.type, (uint32_t)frame.payload.size(), frame.cid);

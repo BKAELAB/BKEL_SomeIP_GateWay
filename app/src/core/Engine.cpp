@@ -2,7 +2,7 @@
 
 /* Protocol 등 Main Funtion 처리 */
 void Engine::Run()
-{
+{  
     /* Config 로드 */
     Config::getInstance().load("config/config.json");
 

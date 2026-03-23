@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
 
     // 송신 스레드: 1초마다 패킷 반복 전송
     std::thread txThread([&]() {
-    uint8_t payload[] = {0x01, 0x02, 0x03, 0x04, 0x05};
+        uint8_t payload[] = {0x01, 0x02, 0x03, 0x04, 0x05};
         int seq = 0;
         while (true) {
             auto txData = PacketEncoder::build_frame(0x21, 0x01, payload, sizeof(payload), cid);

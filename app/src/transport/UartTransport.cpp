@@ -62,7 +62,7 @@ void UART::txWorker() {
         std::vector<uint8_t> data;
         {
             std::unique_lock<std::mutex> lock(txMtx);
-            // 큐가 비어있으면 데이터가 들어올 때까지 여기서 잠듦 (CPU 점유 0%)
+            // 큐가 비어있으면 데이터가 들어올 때까지 대기
             txCv.wait(lock, [this] { return !txQueue.empty() || !running; });
 
             if (!running && txQueue.empty()) return;
@@ -77,6 +77,7 @@ void UART::txWorker() {
         }
     }
 }
+
 
 void UART::rxWorker() {
      #ifdef UART_USE_DEBUG
