@@ -43,6 +43,7 @@ class Frame:
     payload: bytes
     cid_raw: int
     crc8: int
+    raw_packet: bytes = b""
     timestamp: float = field(default_factory=time.time)
 
     @property
@@ -87,4 +88,11 @@ class FrameCodec:
         payload = raw[payload_start : payload_start + dlc]
         cid_raw = struct.unpack(">H", raw[payload_start + dlc : payload_start + dlc + 2])[0]
         recv_crc = raw[-1]  # Discarded for now (only consumed).
-        return Frame(sid=sid, data_type=data_type, payload=payload, cid_raw=cid_raw, crc8=recv_crc)
+        return Frame(
+            sid=sid,
+            data_type=data_type,
+            payload=payload,
+            cid_raw=cid_raw,
+            crc8=recv_crc,
+            raw_packet=raw,
+        )

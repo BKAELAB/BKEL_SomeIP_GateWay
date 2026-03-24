@@ -32,13 +32,31 @@ class MockRaspiServer:
 
     def _adv_loop(self) -> None:
         assert self.client is not None
+        adv_services = [
+            (0x10, "RPC_LD2_Control"),
+            (0x11, "RPC_MCU_Reset"),
+            (0x12, "RPC_SPI_ReadWrite"),
+            (0x13, "RPC_PWM_SetOut"),
+            (0x20, "Diag_PWM_Output_Value"),
+            (0x21, "Diag_PWM_Input_Value"),
+            (0x22, "Diag_ADC1_GetValue"),
+            (0x23, "Diag_ADC2_GetValue"),
+            (0x24, "Diag_GPO_PinState"),
+            (0x25, "Diag_GPI_PinState"),
+            (0x26, "Diag_LD2_PinState"),
+        ]
         while self.running:
-            brief = "MockMCU:0x10,0x11,0x12,0x13,0x20,0x21,0x22,0x23,0x24,0x25,0x26"
-            pkt = FrameCodec.encode(0x01, 0x03, brief.encode("utf-8"), self.cid, self._next_seq())
-            try:
-                self.client.sendall(pkt)
-            except OSError:
-                self.running = False
+            # Service advertise is sent as a burst of multiple packets.
+            for sid, name in adv_services:
+                brief = f"0x{sid:02X}:{name}"
+                pkt = FrameCodec.encode(0x01, 0x03, brief.encode("utf-8"), self.cid, self._next_seq())
+                try:
+                    self.client.sendall(pkt)
+                except OSError:
+                    self.running = False
+                    break
+                time.sleep(0.03)
+            if not self.running:
                 break
             time.sleep(5.0)
 
