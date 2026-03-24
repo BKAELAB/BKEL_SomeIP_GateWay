@@ -60,3 +60,8 @@ Then connect GUI to `127.0.0.1:8888`.
 ### Notes
 - RX path currently only consumes/discards CRC8 1 byte (no CRC mismatch branch).
 - If service advertise payload does not include explicit SID list (`0x10,0x22,...`), GUI falls back to known RPC/DIAG defaults.
+
+### Demonstration
+
+<img src="imgsrc/image.png" width=600 height=500>
+<img src="imgsrc/image-1.png" width=600 height=500>
