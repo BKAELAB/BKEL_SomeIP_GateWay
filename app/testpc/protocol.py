@@ -61,7 +61,8 @@ class FrameCodec:
         if len(payload) > MAX_PAYLOAD:
             raise ValueError("Payload too large")
         cid_raw = ((cid & 0x0FFF) << 4) | (seq & 0x0F)
-        body = struct.pack(HEADER_FMT, sid, data_type, len(payload)) + payload + struct.pack(">H", cid_raw)
+        # CID+Seq word: gateway forwards this field as little-endian (host int on Raspi, etc.).
+        body = struct.pack(HEADER_FMT, sid, data_type, len(payload)) + payload + struct.pack("<H", cid_raw)
         crc = crc8_placeholder(bytes([SOF]) + body)
         return bytes([SOF]) + body + bytes([crc])
 
@@ -86,7 +87,7 @@ class FrameCodec:
         del buffer[:frame_len]
         payload_start = 1 + HEADER_SIZE
         payload = raw[payload_start : payload_start + dlc]
-        cid_raw = struct.unpack(">H", raw[payload_start + dlc : payload_start + dlc + 2])[0]
+        cid_raw = struct.unpack("<H", raw[payload_start + dlc : payload_start + dlc + 2])[0]
         recv_crc = raw[-1]  # Discarded for now (only consumed).
         return Frame(
             sid=sid,
