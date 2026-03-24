@@ -40,3 +40,9 @@ build/
 *.stpr
 *.stfl
 *.stf*
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
