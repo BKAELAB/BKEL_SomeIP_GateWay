@@ -17,14 +17,12 @@
 *.su
 *.gdb
 
+./someip_gateway_mcu_stm32f103rb/settings/language.settings.xml
+
 # -------------------------------------------------------------------------
 # 2. STM32CubeIDE
 # -------------------------------------------------------------------------
 .metadata/
-
-.cproject
-.project
-.settings/
 
 Debug/
 Release/
