@@ -6,62 +6,55 @@
  */
 
 #include "BKEL_APP_service.h"
-#include "BKEL_externs.h"
-#include "BKEL_sysconfig.h"
+#include "string.h"
+#include "BKEL_BSW_uart.h"
 
-ServiceID_t gSid[SERVICE_ID_MAX];
-static uint16_t gIdCnt = 0;
 
-/*
- * NOTICE : info text size is must less than 10 !!
- */
-BKEL_SERVICE_STATE_T BKEL_CreateServiceID(ServiceID_t* sid)
+static const char *service_advertise_payload[] =
 {
-	if (gIdCnt < SERVICE_ID_MAX)
-	{
-		gSid[gIdCnt++] = *sid;
-	}
-	else
-	{
-		return SERVICE_IDCNT_FULL;
-	}
-	return SERVICE_OK;
+	"SOF",
+
+    "0x10 : RPC_LD2_Control",
+    "0x11 : RPC_MCU_Reset",
+    "0x12 : RPC_SPI_Read",
+    "0x13 : RPC_PWM_SetOut",
+
+    "0x20 : DIAG_PWM_Output_Value",
+    "0x21 : DIAG_PWM_Input_Value",
+    "0x22 : DIAG_ADC1_GetValue",
+    "0x23 : DIAG_ADC2_GetValue",
+    "0x24 : DIAG_GPO_PinState",
+    "0x25 : DIAG_GPI_PinState",
+    "0x26 : DIAG_LD2_PinState",
+
+	"EOF"
+};
+
+
+void AppService_SendAdvertise(void)
+{
+    uint8_t tx_buf[256];
+
+    for (size_t i = 0;
+         i < (sizeof(service_advertise_payload) / sizeof(service_advertise_payload[0]));
+         i++)
+    {
+        const char *payload = service_advertise_payload[i];
+        uint16_t payload_len = strlen(payload);
+
+        size_t packet_len = build_frame(
+            tx_buf,
+            sizeof(tx_buf),
+            SERVICE_ADVERTISE,      // SID = 0x01
+            P_DATA_TYPE_CHAR,       // ★ CHAR 타입
+            (const uint8_t *)payload,
+            payload_len
+        );
+
+        if (packet_len == 0)
+            continue;
+
+        BKEL_UART_Tx(tx_buf, (uint16_t)packet_len);
+    }
 }
 
-uint16_t BKEL_GetSIDCount()
-{
-	return gIdCnt;
-}
-
-BKEL_SERVICE_STATE_T BKEL_SendServiceID(void* arg)
-{
-	BKEL_SERVICE_STATE_T retState;
-	char buffer[256];
-	int len = 0;
-
-	/*
-	 * Packet Frame
-	 * DLC(2Byte)|SID(2Byte)|INFO(Dynamic)
-	 */
-	for (int i = 0 ; i < gIdCnt; ++i)
-	{
-		uint16_t sid = gSid[i].sid;
-		uint16_t dlc = (uint16_t)(2 + strlen(gSid[i].sinfo));
-		size_t sinfo_len = strlen(gSid[i].sinfo);
-
-		// 1. set DLC
-		memcpy(buffer + len, &dlc, sizeof(uint16_t));
-		len += sizeof(uint16_t);
-
-		// 2. copy sid
-		memcpy(buffer + len, &sid, sizeof(uint16_t));
-		len += sizeof(uint16_t);
-
-		// 3. copy sInfo
-		memcpy(buffer + len, gSid[i].sinfo, sinfo_len);
-		len += sinfo_len;
-	}
-
-	retState = HAL_UART_Transmit(&huart2, (uint8_t*)buffer, len, HAL_MAX_DELAY);
-	return retState == HAL_OK ? (SERVICE_OK) : SERVICE_ERROR;
-}

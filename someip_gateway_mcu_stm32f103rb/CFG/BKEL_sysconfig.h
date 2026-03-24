@@ -9,6 +9,13 @@
 #define INC_BKEL_SYSCONFIG_H_
 #include <BKEL_typedef.h>
 
+/* COMPILE MODE */
+#define USE_FEATURE_TEST 	(1U)
+
+/* SET/CLR */
+#define BKEL_U_CLR			(0U)
+#define BKEL_U_SET			(1U)
+
 /* For SOME/UART Config */
 #define USE_UART_DEBUG			1U
 #define SERVICE_ID_MAX			10U

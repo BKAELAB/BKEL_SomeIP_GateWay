@@ -9,8 +9,7 @@
 
 /* Extern VARS */
 
-QueueHandle_t hQueue;
-
+StreamBufferHandle_t rxStream;
 hTASK_t hSendAdvertiseTask;
 hTASK_t hCommandCustomerTask;
 hTASK_t hSendDataTask;
