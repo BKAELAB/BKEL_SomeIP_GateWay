@@ -31,6 +31,7 @@
 
 ## TestPC Prototype (TCP GUI)
 - `app/testpc_prototype.py` is a Python/Tkinter prototype client for `TestPC <-> Raspi` TCP communication.
+- Internal modules are split under `app/testpc/` (`protocol`, `network`, `gui`, `mock_raspi_server`) to keep source manageable.
 - It parses custom frames:
   - `SOF(0xAA) | SID(1) | DataType(1) | DLC(2) | Payload | CID(2) | CRC8(1)`
 - Main prototype flow:
@@ -44,6 +45,18 @@
 python app/testpc_prototype.py
 ```
 
+### Local Simulation (Mock Raspi)
+Terminal #1:
+```bash
+python -m app.testpc.mock_raspi_server
+```
+
+Terminal #2:
+```bash
+python app/testpc_prototype.py
+```
+Then connect GUI to `127.0.0.1:8888`.
+
 ### Notes
-- Current CRC8 is a prototype XOR implementation and should be replaced with project-specific CRC8 parameters.
+- RX path currently only consumes/discards CRC8 1 byte (no CRC mismatch branch).
 - If service advertise payload does not include explicit SID list (`0x10,0x22,...`), GUI falls back to known RPC/DIAG defaults.
