@@ -40,7 +40,6 @@
   3. Double-click MCU to show available services
   4. Double-click service to send request (RPC: fire-and-forget, DIAG: show response value)
 
-
 ### Run
 ```bash
 python app/testpc_prototype.py
