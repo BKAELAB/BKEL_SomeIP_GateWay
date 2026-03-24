@@ -27,14 +27,6 @@ void SessionManager::removeSession(uint16_t cid) {
     std::cout << "[SessionManager] Session removed, CID=" << cid << " count=" << sessions_.size() << std::endl;
 }
 
-void SessionManager::forwardToMcu(uint16_t cid, const BKEL_Frame& frame) {
-    std::lock_guard<std::mutex> lock(mtx_);
-    std::cout << "[onTcpFrameArrived] cid=" << cid << " frame.cid=" << frame.cid << std::endl;
-    auto session = findSessionNoLock_(cid);
-    if (!session) return;               // Req-B-34: 일치하는 CID 없을 시, 폐기
-        session->enqueueToMcu(frame);   // 일치하는 CID 있을 경우, Session에 패킷 할당
-}
-
 void SessionManager::onFrameArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& frame) {
     std::lock_guard<std::mutex> lock(mtx_);
 
@@ -54,7 +46,7 @@ void SessionManager::onFrameArrived(uint16_t cid, const std::string& ip, const B
 void SessionManager::broadcast(const BKEL_Frame& frame) {
     std::lock_guard<std::mutex> lock(mtx_);
     for (auto& kv : sessions_) {
-        kv.second->enqueueToClient(frame);
+        kv.second->sendFrame(frame);
     }
 }
 
@@ -63,8 +55,7 @@ void SessionManager::sendToSession(uint16_t cid, const BKEL_Frame& frame) {
     auto s = findSessionNoLock_(cid);
     if (!s) return;
 
-    s->enqueueToClient(frame);
-    s->sendToClient();  // Req-B-32: 패킷 TCP 전송
+    s->sendFrame(frame);  // Req-B-32: 패킷 TCP 전송
 }
 
 // 연결된 세션 수 확인
@@ -73,17 +64,13 @@ size_t SessionManager::getSessionCount() const {
     return sessions_.size();
 }
 
-// Diag 요청에 한하여 SID를 기억
-// 클라이언트가 Diag 요청을 보냈다는 이벤트 시점에 호출
-void SessionManager::onDiagRequestArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& reqFrame) {
+
+// 클라이언트가 요청을 보냈다는 이벤트 시점에 호출
+void SessionManager::forwardToMcu(uint16_t cid, const BKEL_Frame& reqFrame) {
     std::lock_guard<std::mutex> lock(mtx_);
 
-    // 수명관리(Add): 없으면 생성
-    if (sessions_.find(cid) == sessions_.end()) {
-        sessions_[cid] = std::make_shared<Session>(cid, ip);
-    }
-
-    auto& sess = sessions_[cid];
+    auto sess = findSessionNoLock_(cid);
+    if (!sess) return;
 
     // Diag 요청일 때만 lastSid 기억
     // reqFrame이 Diag가 아닐 수도 있으니 방어
@@ -105,7 +92,7 @@ void SessionManager::routeUartRxBySid(const BKEL_Frame& uartFrame) {
 
         // UART SID == Session lastRequestedSid
         if (sess->getLastRequestedSid() == uartFrame.sid) {
-            sess->enqueueToClient(uartFrame);
+            sess->sendFrame(uartFrame);
         }
     }
 }

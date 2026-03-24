@@ -5,13 +5,8 @@
 #include <iostream>
 
 TcpTransport::TcpTransport(int clientFd, uint16_t cid)
-    : clientFd_(clientFd), cid_(cid), running_(false) 
-{
-    // Req-B-34: TCP Rx 파싱 완료 시 CID로 Session 찾아 MCU 큐에 전달
-    parser_.setCallback([this](const BKEL_Frame& frame) {
-        SessionManager::getInstance().forwardToMcu(cid_, frame);
-    });
-}
+    : clientFd_(clientFd), cid_(cid), running_(false) {}
+
 
 TcpTransport::~TcpTransport() {
     if (running_) {
@@ -61,19 +56,51 @@ void TcpTransport::sendData(const std::vector<uint8_t>& data) {
 
 void TcpTransport::rxLoop() {
     // Req-B-22: 백그라운드에서 실시간 패킷 수신
-    uint8_t buf[1024];
+    // MSG_WAITALL로 각 필드를 순서대로 읽어 BKEL_Frame 조립 후 SessionManager에 직접 전달
+    const uint16_t cid = cid_;  // removeSession 후 this가 파괴될 수 있으므로 미리 복사
     while (running_) {
-        ssize_t n = recv(clientFd_, buf, sizeof(buf), 0);
-        if (n <= 0) {
-            // == 0 연결끊김, -1 에러
-            SessionManager::getInstance().removeSession(cid_);    // == 0 이면 연결끊김, Session 삭제
-            running_ = false;
+        // 1. SOF 수신
+        uint8_t sof;
+        if (recv(clientFd_, &sof, BKEL_SOF_SIZE, MSG_WAITALL) != BKEL_SOF_SIZE) break;
+
+        // 2. Header 수신
+        BKEL_Data_Frame_Header hdr{};
+        if (recv(clientFd_, &hdr, BKEL_HDR_SIZE, MSG_WAITALL) != BKEL_HDR_SIZE) break;
+
+        // 3. Payload 수신
+        if (hdr.dlc > BKEL_MAX_PAYLOAD) {
+            std::cerr << "[TcpTransport] invalid dlc=" << hdr.dlc << ", CID=" << cid << std::endl;
             break;
         }
-        std::vector<uint8_t> data(buf, buf + n);
-        parser_.push(data.data(), data.size());
+        std::vector<uint8_t> payload(hdr.dlc);
+        if (hdr.dlc > 0) {
+            if (recv(clientFd_, payload.data(), hdr.dlc, MSG_WAITALL) != (ssize_t)hdr.dlc) break;
+        }
+
+        // 4. CID 수신
+        uint16_t pktCid;
+        if (recv(clientFd_, &pktCid, BKEL_CID_SIZE, MSG_WAITALL) != BKEL_CID_SIZE) break;
+
+        // 5. CRC 수신
+        uint8_t crc;
+        if (recv(clientFd_, &crc, BKEL_CRC_SIZE, MSG_WAITALL) != BKEL_CRC_SIZE) break;
+
+        // 6. BKEL_Frame 조립 후 SessionManager에 직접 전달
+        BKEL_Frame frame;
+        frame.sid     = hdr.sid;
+        frame.type    = hdr.type;
+        frame.dlc     = hdr.dlc;
+        frame.cid     = pktCid;
+        frame.payload = std::move(payload);
+
+        // Req-B-34: TCP Rx 파싱 완료 시 CID로 Session 찾아 MCU 큐에 전달
+        SessionManager::getInstance().forwardToMcu(cid, frame);
     }
-    std::cout << "[TcpTransport] rxLoop exited" << std::endl;
+
+    SessionManager::getInstance().removeSession(cid);
+    // 주의: removeSession 이후 Session이 소멸되면 this도 파괴될 수 있음
+    // cid_ 등 멤버 접근 금지, 로컬 변수 cid 사용
+    std::cout << "[TcpTransport] rxLoop exited, CID=" << cid << std::endl;
 }
 
 void TcpTransport::txLoop() {

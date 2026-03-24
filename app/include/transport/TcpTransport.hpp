@@ -8,7 +8,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <functional>
-#include <protocol/PacketParser.hpp>
+#include <protocol/Packet.hpp>
 
 class TcpTransport {
 public:
@@ -28,7 +28,6 @@ private:
 
     int clientFd_;
     uint16_t cid_;
-    PacketParser parser_; 
 
     std::atomic<bool> running_;
     std::thread rxThread_;
