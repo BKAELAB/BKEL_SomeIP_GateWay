@@ -40,8 +40,12 @@ class PrototypeApp:
         self.port_var = tk.StringVar(value="8888")
         ttk.Entry(conn_frame, textvariable=self.port_var, width=8).grid(row=0, column=3, padx=4, pady=4)
 
-        ttk.Button(conn_frame, text="Connect", command=self.connect).grid(row=0, column=4, padx=4, pady=4)
-        ttk.Button(conn_frame, text="Disconnect", command=self.disconnect).grid(row=0, column=5, padx=4, pady=4)
+        ttk.Label(conn_frame, text="Client CID").grid(row=0, column=4, padx=4, pady=4)
+        self.client_cid_var = tk.StringVar(value="0x700")
+        ttk.Entry(conn_frame, textvariable=self.client_cid_var, width=10).grid(row=0, column=5, padx=4, pady=4)
+
+        ttk.Button(conn_frame, text="Connect", command=self.connect).grid(row=0, column=6, padx=4, pady=4)
+        ttk.Button(conn_frame, text="Disconnect", command=self.disconnect).grid(row=0, column=7, padx=4, pady=4)
 
         body = ttk.Frame(self.root)
         body.pack(fill="both", expand=True, padx=8, pady=6)
@@ -104,6 +108,7 @@ class PrototypeApp:
         try:
             self.client = TcpClient(host, port, self.incoming_queue, self.status_queue)
             self.client.connect()
+            self._send_client_cid_announce()
         except OSError as exc:
             messagebox.showerror("Connect Error", str(exc))
             self.client = None
@@ -169,6 +174,26 @@ class PrototypeApp:
             self._append_tx_log(cid=cid, sid=sid, seq=seq, payload=payload, raw=data, data_type=data_type)
         except Exception as exc:
             messagebox.showerror("Send Error", str(exc))
+
+    def _send_client_cid_announce(self) -> None:
+        if not self.client:
+            return
+        try:
+            client_cid = self._parse_cid(self.client_cid_var.get().strip())
+        except ValueError as exc:
+            messagebox.showerror("Client CID Error", str(exc))
+            return
+
+        sid = 0x30
+        data_type = 0x01
+        payload = b""
+        seq = self.client.next_seq(client_cid)
+        try:
+            packet = FrameCodec.encode(sid=sid, data_type=data_type, payload=payload, cid=client_cid, seq=seq)
+            self.client.send(packet)
+            self._append_log(f"[TX] CLIENT_CID_ANNOUNCE SID:0x30 CID:0x{client_cid:03X} SEQ:{seq}")
+        except Exception as exc:
+            messagebox.showerror("CID Announce Error", str(exc))
 
     @staticmethod
     def default_data_type_for_sid(sid: int) -> int:
@@ -394,6 +419,18 @@ class PrototypeApp:
         if any(v < 0 or v > 0xFF for v in values):
             raise ValueError("Each payload byte must be 00..FF.")
         return bytes(values)
+
+    @staticmethod
+    def _parse_cid(text: str) -> int:
+        if not text:
+            raise ValueError("Client CID is required.")
+        try:
+            value = int(text, 16)
+        except ValueError as exc:
+            raise ValueError("Client CID must be hex (example: 700 or 0x700).") from exc
+        if value < 0 or value > 0x0FFF:
+            raise ValueError("Client CID must be in range 0x000..0xFFF.")
+        return value
 
 
 def run_gui() -> None:
