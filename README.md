@@ -28,3 +28,22 @@
 
 ## Docs
 - [WIKIPAGE](https://github.com/BKAELAB/tsw_bringup_f103rb/wiki)
+
+## TestPC Prototype (TCP GUI)
+- `app/testpc_prototype.py` is a Python/Tkinter prototype client for `TestPC <-> Raspi` TCP communication.
+- It parses custom frames:
+  - `SOF(0xAA) | SID(1) | DataType(1) | DLC(2) | Payload | CID(2) | CRC8(1)`
+- Main prototype flow:
+  1. Receive periodic `SID=0x01` service advertise from MCU (via Raspi)
+  2. Build MCU list by CID in GUI
+  3. Double-click MCU to show available services
+  4. Double-click service to send request (RPC: fire-and-forget, DIAG: show response value)
+
+### Run
+```bash
+python app/testpc_prototype.py
+```
+
+### Notes
+- Current CRC8 is a prototype XOR implementation and should be replaced with project-specific CRC8 parameters.
+- If service advertise payload does not include explicit SID list (`0x10,0x22,...`), GUI falls back to known RPC/DIAG defaults.
