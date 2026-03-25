@@ -58,7 +58,7 @@ python app/testpc_prototype.py
 Then connect GUI to `127.0.0.1:8888`.
 
 ### Notes
-- The 16-bit `CID | Seq` field after the payload is packed **little-endian** on the TCP path (matches typical gateway `int` / host byte order). Header `SID`, `DataType`, `DLC` remain **big-endian** (`>BBH`).
+- After `SOF`, the TestPC parser uses **full little-endian** for `SID`, `DataType`, `DLC` (`<BBH`) and for `CID | Seq` (`<H`). If your gateway sends **big-endian `DLC`**, switch `HEADER_FMT` in `app/testpc/protocol.py` back to `">BBH"` and keep only `<H` for CID.
 - RX path currently only consumes/discards CRC8 1 byte (no CRC mismatch branch).
 - If service advertise payload does not include explicit SID list (`0x10,0x22,...`), GUI falls back to known RPC/DIAG defaults.
 

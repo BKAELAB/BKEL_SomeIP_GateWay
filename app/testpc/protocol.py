@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional
 
 SOF = 0xAA
-HEADER_FMT = ">BBH"  # SID(1), DataType(1), DLC(2)
+# Full little-endian after SOF: SID(1), DataType(1), DLC(uint16 LE), then CID(uint16 LE).
+HEADER_FMT = "<BBH"
 HEADER_SIZE = struct.calcsize(HEADER_FMT)
 TAIL_SIZE = 3  # CID(2) + CRC8(1)
 MAX_PAYLOAD = 4096
@@ -61,7 +62,6 @@ class FrameCodec:
         if len(payload) > MAX_PAYLOAD:
             raise ValueError("Payload too large")
         cid_raw = ((cid & 0x0FFF) << 4) | (seq & 0x0F)
-        # CID+Seq word: gateway forwards this field as little-endian (host int on Raspi, etc.).
         body = struct.pack(HEADER_FMT, sid, data_type, len(payload)) + payload + struct.pack("<H", cid_raw)
         crc = crc8_placeholder(bytes([SOF]) + body)
         return bytes([SOF]) + body + bytes([crc])
