@@ -91,7 +91,7 @@ class MockRaspiServer:
             payload = bytes([random.randint(0, 100), random.randint(1, 20)])
             data_type = 0x02
         elif sid in {0x22, 0x23}:
-            payload = random.randint(0, 4095).to_bytes(2, "big")
+            payload = random.randint(0, 4095).to_bytes(2, "little")
             data_type = 0x02
         elif sid in {0x24, 0x25, 0x26}:
             payload = bytes([random.randint(0, 1)])

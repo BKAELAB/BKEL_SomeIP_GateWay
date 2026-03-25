@@ -10,6 +10,9 @@ HEADER_SIZE = struct.calcsize(HEADER_FMT)
 TAIL_SIZE = 3  # CID(2) + CRC8(1)
 MAX_PAYLOAD = 4096
 
+# uint16 inside DIAG payload (0x22/0x23 ADC, etc.): MCU / gateway typically use LE on STM32/ARM.
+DIAG_PAYLOAD_UINT16_ORDER: str = "little"
+
 SID_INFO: Dict[int, str] = {
     0x01: "Service Advertise",
     0x10: "RPC_LD2_Control",

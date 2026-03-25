@@ -6,7 +6,7 @@ from typing import Dict, Optional
 
 from .model import McuInfo
 from .network import TcpClient
-from .protocol import DIAG_SIDS, RPC_SIDS, Frame, FrameCodec, SID_INFO
+from .protocol import DIAG_PAYLOAD_UINT16_ORDER, DIAG_SIDS, RPC_SIDS, Frame, FrameCodec, SID_INFO
 
 OFFLINE_TIMEOUT_SEC = 10
 
@@ -357,7 +357,7 @@ class PrototypeApp:
         if sid in {0x20, 0x21} and len(payload) >= 2:
             return f"Duty={payload[0]}, Period/Freq={payload[1]}"
         if sid in {0x22, 0x23} and len(payload) >= 2:
-            raw = int.from_bytes(payload[:2], "big")
+            raw = int.from_bytes(payload[:2], DIAG_PAYLOAD_UINT16_ORDER)
             return f"ADC={raw} ({(raw / 4095.0) * 100.0:.2f}%)"
         return payload.hex(" ")
 
@@ -367,7 +367,7 @@ class PrototypeApp:
             duty, period = payload[0], payload[1]
             return f"SID=0x{sid:02X}: Duty={duty}, Period/Freq={period}"
         if sid in {0x22, 0x23} and len(payload) >= 2:
-            val = int.from_bytes(payload[:2], "big")
+            val = int.from_bytes(payload[:2], DIAG_PAYLOAD_UINT16_ORDER)
             pct = (val / 4095.0) * 100.0
             return f"SID=0x{sid:02X}: ADC Raw={val}, Percent={pct:.2f}%"
         if sid in {0x24, 0x25, 0x26} and payload:
