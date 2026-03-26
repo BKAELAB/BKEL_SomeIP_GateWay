@@ -28,3 +28,41 @@
 
 ## Docs
 - [WIKIPAGE](https://github.com/BKAELAB/tsw_bringup_f103rb/wiki)
+
+## TestPC Prototype (TCP GUI)
+- `app/testpc_prototype.py` is a Python/Tkinter prototype client for `TestPC <-> Raspi` TCP communication.
+- Internal modules are split under `app/testpc/` (`protocol`, `network`, `gui`, `mock_raspi_server`) to keep source manageable.
+- It parses custom frames:
+  - `SOF(0xAA) | SID(1) | DataType(1) | DLC(2) | Payload | CID(2) | CRC8(1)`
+- Main prototype flow:
+  1. Receive periodic `SID=0x01` service advertise from MCU (via Raspi)
+  2. Build MCU list by CID in GUI
+  3. Double-click MCU to show available services
+  4. Double-click service to send request (RPC: fire-and-forget, DIAG: show response value)
+
+### Run
+```bash
+python app/testpc_prototype.py
+```
+
+### Local Simulation (Mock Raspi)
+Terminal #1:
+```bash
+python -m app.testpc.mock_raspi_server
+```
+
+Terminal #2:
+```bash
+python app/testpc_prototype.py
+```
+Then connect GUI to `127.0.0.1:8888`.
+
+### Notes
+- After `SOF`, the TestPC parser uses **full little-endian** for `SID`, `DataType`, `DLC` (`<BBH`) and for `CID | Seq` (`<H`). If your gateway sends **big-endian `DLC`**, switch `HEADER_FMT` in `app/testpc/protocol.py` back to `">BBH"` and keep only `<H` for CID.
+- RX path currently only consumes/discards CRC8 1 byte (no CRC mismatch branch).
+- If service advertise payload does not include explicit SID list (`0x10,0x22,...`), GUI falls back to known RPC/DIAG defaults.
+
+### Demonstration
+
+<img src="imgsrc/image.png" width=600 height=500>
+<img src="imgsrc/image-1.png" width=600 height=500>
