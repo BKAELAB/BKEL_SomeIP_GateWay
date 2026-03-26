@@ -3,10 +3,10 @@
 #include <protocol/PacketEncoder.hpp>
 #include <utility>
 #include <iostream>
+#include <queue>
 Session::Session(uint16_t cid, std::string ip, std::unique_ptr<TcpTransport> transport)
     : cid_(cid),
       ipAddress_(std::move(ip)),
-      lastRequestedSid_(0),
       maliciousScore_(0),
       isBlocked_(false),
       transport_(std::move(transport)) {}
@@ -16,12 +16,21 @@ void Session::startTransport() {  // transport start-> tx, rxLoop 시작됨
 }
 
 void Session::updateLastRequestedSid(uint8_t sid) {
-    lastRequestedSid_ = sid;    // 가장 최근 요청한 SID 정보 담기
+    requestedSidQueue_.push(sid);  // 가장 최근 요청한 SID 정보 담기
 }
 
 // UART Rx 할당 로직에서 비교
 uint8_t Session::getLastRequestedSid() const {
-    return lastRequestedSid_;
+    if (requestedSidQueue_.empty()) {
+        return 0xFF; 
+    }
+    return requestedSidQueue_.front();
+}
+
+void Session::popRequestedSid() {
+    if (!requestedSidQueue_.empty()) {
+        requestedSidQueue_.pop();
+    }
 }
 
 void Session::enqueueToMcu(const BKEL_Frame& frame) {
