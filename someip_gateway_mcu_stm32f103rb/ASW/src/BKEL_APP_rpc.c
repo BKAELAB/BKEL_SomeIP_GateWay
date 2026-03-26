@@ -112,5 +112,6 @@ void BKEL_RPC_PWM_Setout(BKEL_Common_Packet_t *packet)
 	BKEL_PWM_Payload_t *pwm_payload =
 			(BKEL_PWM_Payload_t *)packet->payload;
 
+	BKEL_PWM_SetPeriod(pwm_payload->period);
 	BKEL_PWM_SetDuty(pwm_payload->duty);
 }

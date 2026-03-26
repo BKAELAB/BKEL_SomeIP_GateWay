@@ -8,6 +8,12 @@
 #include "BKEL_BSW_pwm.h"
 #include "main.h"
 
+void BKEL_PWM_SetPeriod(uint8_t period)
+{
+    if (period == 0) return;
+	TIM2->ARR = 1000000 / (period * 1000);
+}
+
 void BKEL_PWM_SetDuty(uint8_t duty_percent)
 {
 	if (duty_percent > 100) duty_percent = 100;
@@ -17,8 +23,8 @@ void BKEL_PWM_SetDuty(uint8_t duty_percent)
 
 uint8_t BKEL_PWM_ReadDuty(void)
 {
-	uint16_t period = TIM3->CCR1;
-	uint16_t Thigh = TIM3->CCR2;
+	uint16_t period = TIM2->ARR;
+	uint16_t Thigh = TIM2->CCR2;
 	uint16_t duty = 999;
 	if (period > 0)
 	{
@@ -29,8 +35,8 @@ uint8_t BKEL_PWM_ReadDuty(void)
 
 uint8_t BKEL_PWM_ReadPeriod(void)
 {
-	uint16_t period = TIM3->CCR1;
-
+	uint16_t period = TIM2->ARR;
+    if (period > 0) period = 1000000 / period;
 	return (uint8_t)(period/999U);
 }
 
