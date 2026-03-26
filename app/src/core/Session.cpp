@@ -25,6 +25,7 @@ uint8_t Session::getLastRequestedSid() const {
 }
 
 void Session::enqueueToMcu(const BKEL_Frame& frame) {
+    std::lock_guard<std::mutex> lock(mtx_);
     std::cout << "[Session] enqueueToMcu, CID=" << cid_ << " SID=0x" << std::hex << (int)frame.sid << std::endl;
     toMcuQueue_.push_back(frame);       // MCU로 보낼 패킷 목록에 담기
 }
@@ -32,6 +33,7 @@ void Session::enqueueToMcu(const BKEL_Frame& frame) {
 // MCU로 보낼 패킷을 꺼내는 함수
 bool Session::popMcuFrame(BKEL_Frame& out)
 {
+    std::lock_guard<std::mutex> lock(mtx_);
     if (toMcuQueue_.empty())
         return false;
 
