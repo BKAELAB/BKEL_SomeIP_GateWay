@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstdint>
 #include <memory>
+#include <queue>
 #include <protocol/Packet.hpp> // BKEL_Frame
 #include <transport/TcpTransport.hpp> // transport
 class Session {
@@ -23,13 +24,16 @@ public:
 
     bool popMcuFrame(BKEL_Frame& out);
 
+    // 짝 찾았을 때 큐에서 제거하는 함수
+    void popRequestedSid();  
+
     // 악의적 행동 정보 보유용
     void setBlocked(bool blocked);
     bool isBlocked() const;
 
     // BKEL_Frame을 인코딩하여 TCP 전송
     void sendFrame(const BKEL_Frame& frame);
-
+                 
     // 테스트/검증을 위한 최소 getter (Req-B-24/25 확인용)
     // uint8_t getLastRequestedSid() const { return lastRequestedSid_; }
     // size_t  getToMcuQueueSize() const { return toMcuQueue_.size(); }
@@ -39,7 +43,7 @@ private:
     // 세션이 담아야 하는 정보
     uint16_t cid_;
     std::string ipAddress_;
-    uint8_t lastRequestedSid_;
+    std::queue<uint8_t> requestedSidQueue_;
     std::unique_ptr<TcpTransport> transport_; 
 
     std::vector<BKEL_Frame> toMcuQueue_;     // MCU로 보낼 패킷 목록
