@@ -10,6 +10,8 @@
 #include "BKEL_BSW_pwm.h"
 #include "BKEL_BSW_spi.h"
 
+#define ENABLE_MCU_RESET
+
 // sid 0x10
 void BKEL_RPC_LD2_Control(BKEL_Common_Packet_t *packet)
 {

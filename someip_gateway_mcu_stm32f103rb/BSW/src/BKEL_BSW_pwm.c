@@ -24,7 +24,7 @@ void BKEL_PWM_SetDuty(uint8_t duty_percent)
 uint8_t BKEL_PWM_ReadDuty(void)
 {
 	uint16_t period = TIM2->ARR;
-	uint16_t Thigh = TIM2->CCR2;
+	uint16_t Thigh = TIM2->CCR1;
 	uint16_t duty = 999;
 	if (period > 0)
 	{
