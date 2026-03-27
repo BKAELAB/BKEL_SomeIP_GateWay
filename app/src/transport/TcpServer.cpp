@@ -154,7 +154,7 @@ std::optional<uint16_t> TcpServer::receivedCid(int clientFd) {
     // CID 수신
     uint16_t raw_cid = 0;
     if (recv(clientFd, &raw_cid, BKEL_CID_SIZE, MSG_WAITALL) != BKEL_CID_SIZE) return std::nullopt;
-    uint16_t cid = ntohs(raw_cid) << 4;
+    uint16_t cid = raw_cid >> 4;
     
     // CRC 수신 (읽어서 버림 — 버퍼에 남으면 rxLoop의 SOF 판단을 오염시킴)
     uint8_t crc = 0;
