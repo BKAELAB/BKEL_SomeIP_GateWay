@@ -42,6 +42,9 @@ add_executable(test_client
     src/test_client.cpp
     src/protocol/PacketParser.cpp
     src/protocol/PacketEncoder.cpp
+    src/core/SessionManager.cpp
+    src/core/Session.cpp
+    src/transport/TcpTransport.cpp
 )
 
 target_include_directories(test_client PRIVATE include)

@@ -1,5 +1,7 @@
 #include "transport/UartTransport.hpp"
 #include "protocol/PacketParser.hpp"
+#include "protocol/PacketEncoder.hpp"
+#include "core/SessionManager.hpp"
 #include "util/Config.hpp"
 #include <iostream>
 #include <fcntl.h>
@@ -42,40 +44,45 @@ void UART::stop() {
 }
 
 uint32_t UART::writeData(const uint8_t* data, uint32_t len) {
+    // 직접 write를 호출하는 방식으로 남겨둠
     if (fd < 0 || !data || len == 0) return 0;
-
-    {
-        // 큐에 데이터를 넣는 동안만 Lock
-        std::lock_guard<std::mutex> lock(txMtx);
-        txQueue.push(std::vector<uint8_t>(data, data + len));
-    }
-    
-    // 잠자고 있는 Tx 워커 중 한 명을 깨움
-    txCv.notify_one();
-    
-    return len;
+    return write(fd, data, len);
 }
 
 void UART::txWorker() {
     while (running) {
-        std::vector<uint8_t> data;
-        {
-            std::unique_lock<std::mutex> lock(txMtx);
-            // 큐가 비어있으면 데이터가 들어올 때까지 여기서 잠듦 (CPU 점유 0%)
-            txCv.wait(lock, [this] { return !txQueue.empty() || !running; });
+        BKEL_Frame frame;
 
-            if (!running && txQueue.empty()) return;
+        // SessionManager를 통해 송신할 프레임 확인
+        if (SessionManager::getInstance().popNextMcuFrame(frame)) {
+            #ifdef UART_USE_DEBUG
+            std::cout << "[UART TX] Data retrieved from session. SID: 0x" 
+                      << std::hex << (int)frame.sid << std::dec << std::endl;
+            #endif
 
-            data = std::move(txQueue.front());
-            txQueue.pop();
+            auto data = PacketEncoder::build_frame(
+                frame.sid, frame.type, frame.payload.data(), frame.dlc, frame.cid
+            );
+
+            if (!data.empty()) {
+                ssize_t sentBytes = write(fd, data.data(), data.size());
+                
+                #ifdef UART_USE_DEBUG
+                if (sentBytes > 0) {
+                    std::cout << "[UART TX] Hardware write success. Size: " << sentBytes << " bytes" << std::endl;
+                } else {
+                    perror("[UART TX] Hardware write failed");
+                }
+                #endif
+            }
+            continue; // 데이터가 존재하면 지연 없이 다음 프레임 확인
         }
 
-        // 실제 전송 (write는 시스템 콜이므로 내부적으로 동기화됨)
-        if (!data.empty()) {
-            write(fd, data.data(), data.size());
-        }
+        // 송신 데이터가 없을 경우 CPU 점유율 방지를 위해 대기
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
+
 
 void UART::rxWorker() {
      #ifdef UART_USE_DEBUG

@@ -38,12 +38,12 @@ void SessionManager::onFrameArrived(uint16_t cid, const std::string& ip, const B
     // Session 없으면 무시 (생성은 TCP 연결 시 addSession에서만)
     auto session = findSessionNoLock_(cid);
     if (!session) return;
-
+    if (frame.sid == 0x30) return;
     // Req-B-25: 최근 요청 SID 기록
-    sessions_[cid]->updateLastRequestedSid(frame.sid);
+    // sessions_[cid]->updateLastRequestedSid(frame.sid);
 }
 
-void SessionManager::broadcast(const BKEL_Frame& frame) {
+void SessionManager::broadcast(const BKEL_Frame frame) {
     std::lock_guard<std::mutex> lock(mtx_);
     for (auto& kv : sessions_) {
         kv.second->sendFrame(frame);
@@ -83,16 +83,34 @@ void SessionManager::forwardToMcu(uint16_t cid, const BKEL_Frame& reqFrame) {
 // UART Rx 유효 프레임 할당
 // uartFrame.sid 와 각 Session의 lastRequestedSid가 일치하는 곳에 할당
 // 겹치는 Session이 존재하면 모두 할당
-void SessionManager::routeUartRxBySid(const BKEL_Frame& uartFrame) {
+// void SessionManager::routeUartRxBySid(const BKEL_Frame uartFrame) {
+//     std::lock_guard<std::mutex> lock(mtx_);
+
+//     for (auto& kv : sessions_) {
+//         auto& sess = kv.second;
+//         if (sess->isBlocked()) continue;
+//         std::cout << "Wait SID: " << (int)sess->getLastRequestedSid() << " / Recv SID: " << (int)uartFrame.sid << std::endl;
+//         // 큐의 맨 앞(가장 오래된 요청)이 지금 들어온 UART 응답과 같은지 확인
+//         if (sess->getLastRequestedSid() == uartFrame.sid) {
+//             sess->sendFrame(uartFrame); // 맞으면 클라이언트에게 응답
+//             sess->popRequestedSid(); // 큐에서 꺼냄 (pop)
+            
+//         }
+//     }
+// }
+void SessionManager::routeUartRxBySid(const BKEL_Frame uartFrame) {
     std::lock_guard<std::mutex> lock(mtx_);
 
     for (auto& kv : sessions_) {
         auto& sess = kv.second;
         if (sess->isBlocked()) continue;
 
-        // UART SID == Session lastRequestedSid
-        if (sess->getLastRequestedSid() == uartFrame.sid) {
+        uint8_t expected = sess->getLastRequestedSid();
+
+        //  큐가 비어있지 않고(0xFF 아님), MCU 응답 SID가 내가 기다리던 SID와 같고 응답의 CID가 내 CID와 일치할 때만 처리
+        if (expected != 0xFF && expected == uartFrame.sid) {
             sess->sendFrame(uartFrame);
+            sess->popRequestedSid();
         }
     }
 }
