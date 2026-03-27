@@ -80,7 +80,7 @@ void AppSendDiagGPOPinState()
 	uint8_t out_buf[64];
 	uint8_t payload[1];
 	BKEL_gpio_pin tGPOPin = {
-			GPIOC, 1U
+			GPIOC, (1U<<1U)
 	};
 	payload[0] = BKEL_read_pin(&tGPOPin);
 
@@ -93,7 +93,7 @@ void AppSendDiagGPIPinState()
 	uint8_t out_buf[64];
 	uint8_t payload[1];
 	BKEL_gpio_pin tGPIPin = {
-			GPIOC, 0U
+			GPIOC, (1U<<0U)
 	};
 	payload[0] = BKEL_read_pin(&tGPIPin);
 
