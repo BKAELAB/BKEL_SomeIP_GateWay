@@ -39,6 +39,4 @@ private:
     std::atomic<bool> running_;
     std::thread acceptThread_;
 
-    int pendingFd_;         // accept 후 recv 대기 중인 fd
-    std::mutex pendingMutex_;
 };

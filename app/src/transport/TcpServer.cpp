@@ -9,7 +9,7 @@
 #include <iostream>
 
 TcpServer::TcpServer()
-    : ip_(""), port_(0), serverFd_(-1), pendingFd_(-1), running_(false) {}
+    : ip_(""), port_(0), serverFd_(-1), running_(false) {}
 
 TcpServer::~TcpServer() {
     if (running_) {  // 아직 안 끝났을 때만 shutdown 호출
@@ -64,16 +64,6 @@ void TcpServer::shutdown() {
     }
     std::cout << "[TcpServer] serverFd closed" << std::endl;
 
-    // recv() 블로킹 해제
-    {
-        std::lock_guard<std::mutex> lock(pendingMutex_);
-        if (pendingFd_ >= 0) {
-            ::shutdown(pendingFd_, SHUT_RDWR);
-            ::close(pendingFd_);
-            pendingFd_ = -1;
-        }
-    }
-
     if (acceptThread_.joinable()) {
         std::cout << "[TcpServer] waiting acceptThread..." << std::endl;
         acceptThread_.join();
@@ -106,25 +96,21 @@ void TcpServer::acceptLoop() {
             continue; 
         }
 
-        // recv() 블로킹 전에 pendingFd_ 저장
-        {
-            std::lock_guard<std::mutex> lock(pendingMutex_);
-            pendingFd_ = clientFd;
-        }
+        // 5초 안에 CID 패킷 안 보내면 연결 끊음
+        struct timeval tv { .tv_sec = 5, .tv_usec = 0 };
+        setsockopt(clientFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
         // Req-B-20: 연결 시 CID를 클라이언트로부터 수신
-        auto cid = receivedCid(clientFd);       // 이놈을 실시간으로 바꿔야함.
-
-        // recv() 완료 후 pendingFd_ 초기화
-        {
-            std::lock_guard<std::mutex> lock(pendingMutex_);
-            pendingFd_ = -1;
-        }
+        auto cid = receivedCid(clientFd);
 
         if (!cid) {     // nullopt 체크, (이후 cid 역참조 안전)
             ::close(clientFd);
             continue;
         }
+
+        // 타임아웃 해제 - TcpTransport rxLoop의 recv()에 영향 주지 않도록
+        struct timeval noTimeout { .tv_sec = 0, .tv_usec = 0 };
+        setsockopt(clientFd, SOL_SOCKET, SO_RCVTIMEO, &noTimeout, sizeof(noTimeout));
         std::cout << "[TcpServer] Client connection, CID=" << *cid << std::endl;
 
         // Req-B-23: TCP 연결 시 Session 생성
