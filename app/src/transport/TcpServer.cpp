@@ -86,12 +86,24 @@ void TcpServer::acceptLoop() {
         sockaddr_in clientAddr{};
         socklen_t addrLen = sizeof(clientAddr);
 
-
         int clientFd = accept(serverFd_, (sockaddr*)&clientAddr, &addrLen);
+        char clientIpBuf[INET_ADDRSTRLEN] = {};
+        inet_ntop(AF_INET, &clientAddr.sin_addr, clientIpBuf, sizeof(clientIpBuf));
+        std::string clientIp(clientIpBuf); // 여기서 변수 생성
+
+        bool banned = SessionManager::getInstance().isBanned(clientIp);
+        std::cout << "[Check] IP: " << clientIp << " | IsBanned: " << (banned ? "YES" : "NO") << std::endl << std::flush;
+
         if (clientFd < 0) {
             if (!running_)  break;  // shutdown() 호출 시 정상 종료
             std::cerr << "[TcpServer] accept() failed" << std::endl;    // 로그 남기기 시간찍어서,
             continue;
+        }
+        // 블랙리스트 체크
+        if (SessionManager::getInstance().isBanned(clientIp)) {
+            std::cerr << "[Security] Connection denied. BANNED IP: " << clientIp << std::endl << std::flush;
+            ::close(clientFd);
+            continue; 
         }
 
         // recv() 블로킹 전에 pendingFd_ 저장
@@ -99,11 +111,6 @@ void TcpServer::acceptLoop() {
             std::lock_guard<std::mutex> lock(pendingMutex_);
             pendingFd_ = clientFd;
         }
-
-        // ClientIp 추출
-        char clientIpBuf[INET_ADDRSTRLEN] = {};
-        inet_ntop(AF_INET, &clientAddr.sin_addr, clientIpBuf, sizeof(clientIpBuf));
-        std::string clientIp(clientIpBuf);
 
         // Req-B-20: 연결 시 CID를 클라이언트로부터 수신
         auto cid = receivedCid(clientFd);       // 이놈을 실시간으로 바꿔야함.
@@ -122,6 +129,7 @@ void TcpServer::acceptLoop() {
 
         // Req-B-23: TCP 연결 시 Session 생성
         auto transport = std::make_unique<TcpTransport>(clientFd, *cid);                  // transport 생성
+        transport->setIpAddress(clientIp);
         SessionManager::getInstance().addSession(*cid, clientIp, std::move(transport));   // Session 생성
 
         std::cout << "[TcpServer] Session count=" << SessionManager::getInstance().getSessionCount() << std::endl;
@@ -132,33 +140,45 @@ void TcpServer::acceptLoop() {
 // Req-B-20 추가: 클라이언트 접속 후, SID:0X30 Register CID 등록 패킷 받아옴
 // 패킷 수신 후 CID 반환
 std::optional<uint16_t> TcpServer::receivedCid(int clientFd) {
-    // SOF 확인
     uint8_t sof = 0;
+    
+    // 1. SOF 확인 (1바이트)
     if (recv(clientFd, &sof, 1, MSG_WAITALL) != 1) return std::nullopt;
     if (sof != SOF_DATA_VALUE) return std::nullopt;
 
-    // Header 수신
     BKEL_Data_Frame_Header hdr{};
-    if (recv(clientFd, &hdr, BKEL_HDR_SIZE, MSG_WAITALL) != BKEL_HDR_SIZE) return std::nullopt;
-
-    // sid 검증 0x30: Register CID
-    if (hdr.sid != 0x30) return std::nullopt;
-
-    // payload skip
-    if (hdr.dlc > 0) {
-        std::vector<uint8_t> dummy(hdr.dlc);
-        if (recv(clientFd, dummy.data(), hdr.dlc, MSG_WAITALL) != hdr.dlc)
-            return std::nullopt;
+    if (recv(clientFd, &hdr, BKEL_HDR_SIZE, MSG_WAITALL) != BKEL_HDR_SIZE) {
+        std::cerr << "[Debug] Header Recv Failed (Expected " << (int)BKEL_HDR_SIZE << " bytes)" << std::endl;
+        return std::nullopt;
     }
 
-    // CID 수신
+    // 3. SID 검증 (0x30)
+    if (hdr.sid != 0x30) {
+        std::cerr << "[Debug] SID Mismatch: 0x" << std::hex << (int)hdr.sid << std::dec << " (Expected 0x30)" << std::endl;
+        return std::nullopt;
+    }
+
+    // 4. Payload 건너뛰기
+    if (hdr.dlc > 0) {
+        std::vector<uint8_t> dummy(hdr.dlc);
+        if (recv(clientFd, dummy.data(), hdr.dlc, MSG_WAITALL) != hdr.dlc) return std::nullopt;
+    }
+
+    // 5. CID 수신 (BKEL_CID_SIZE)
     uint16_t raw_cid = 0;
-    if (recv(clientFd, &raw_cid, BKEL_CID_SIZE, MSG_WAITALL) != BKEL_CID_SIZE) return std::nullopt;
-    uint16_t cid = raw_cid >> 4;
+    if (recv(clientFd, &raw_cid, BKEL_CID_SIZE, MSG_WAITALL) != BKEL_CID_SIZE) {
+        std::cerr << "[Debug] CID Recv Failed" << std::endl;
+        return std::nullopt;
+    }
     
-    // CRC 수신 (읽어서 버림 — 버퍼에 남으면 rxLoop의 SOF 판단을 오염시킴)
+    // 6. CRC 수신 (BKEL_CRC_SIZE)
     uint8_t crc = 0;
-    if (recv(clientFd, &crc, BKEL_CRC_SIZE, MSG_WAITALL) != BKEL_CRC_SIZE) return std::nullopt;
+    if (recv(clientFd, &crc, BKEL_CRC_SIZE, MSG_WAITALL) != BKEL_CRC_SIZE) {
+        std::cerr << "[Debug] CRC Recv Failed" << std::endl;
+        return std::nullopt;
+    }
+
+    uint16_t cid = raw_cid >> 4;
 
     return cid;
 }

@@ -2,9 +2,23 @@
 #include <core/Types.hpp>
 #include <iostream>
 
+std::set<std::string> SessionManager::blacklist_;
+std::mutex SessionManager::blacklistMtx_;
+
 SessionManager& SessionManager::getInstance() {
     static SessionManager instance;
     return instance;
+}
+
+void SessionManager::addBlacklist(const std::string& ip) {
+    std::lock_guard<std::mutex> lock(blacklistMtx_);
+    blacklist_.insert(ip);
+    std::cout << "[Security] IP added to blacklist: " << ip << " (Total: " << blacklist_.size() << ")" << std::endl;
+}
+
+bool SessionManager::isBanned(const std::string& ip) {
+    std::lock_guard<std::mutex> lock(blacklistMtx_);
+    return blacklist_.find(ip) != blacklist_.end();
 }
 
 std::shared_ptr<Session> SessionManager::findSessionNoLock_(uint16_t cid) {

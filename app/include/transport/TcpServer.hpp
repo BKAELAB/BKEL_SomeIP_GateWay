@@ -7,6 +7,7 @@
 #include <mutex>
 #include <functional>
 #include <optional>
+#include <set>
 #include "transport/TcpTransport.hpp"
 
 // Req-B-20: TCP 연결 수락 및 TcpTransport 생성
