@@ -10,9 +10,10 @@
 #include <core/Session.hpp>
 #include <core/SessionManager.hpp>
 #include <core/CommandService.hpp>
-#include <util/Config.hpp>
-
 #include <core/Types.hpp>
+#include <util/Config.hpp>
+#include <util/Logger.hpp>
+
 #include <iostream>
 #include <chrono>
 #include <thread>

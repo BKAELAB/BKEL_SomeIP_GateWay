@@ -2,6 +2,7 @@
 #include "core/SessionManager.hpp"
 #include "transport/TlsTransport.hpp"
 #include "util/Config.hpp"
+#include "util/Logger.hpp"
 #include <openssl/ssl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -33,6 +34,7 @@ TcpServer::~TcpServer() {
 }
 
 void TcpServer::startup() {
+    Config::getInstance().load("config/config.json");
     const auto& cfg = Config::getInstance().get().tcp;
     ip_   = cfg.ip;
     port_ = cfg.port;
@@ -62,14 +64,12 @@ void TcpServer::startup() {
 
     // Req-B-20: Accept를 백그라운드 Thread에서 처리
     acceptThread_ = std::thread(&TcpServer::acceptLoop, this);
-#ifdef _TCP_DEBUG_
-    std::cout << "[TcpServer] Listening on port " << port_ << std::endl;
-#endif
+    
+    LOG_INFO("[TcpServer] Listening on port " + std::to_string(port_));
 }
 
 
 void TcpServer::shutdown() {
-    std::cout << "[TcpServer] shutdown() called" << std::endl;
     running_ = false;
 
     if (serverFd_ >= 0) {
@@ -77,12 +77,9 @@ void TcpServer::shutdown() {
         ::close(serverFd_);
         serverFd_ = -1;
     }
-    std::cout << "[TcpServer] serverFd closed" << std::endl;
 
     if (acceptThread_.joinable()) {
-        std::cout << "[TcpServer] waiting acceptThread..." << std::endl;
         acceptThread_.join();
-        std::cout << "[TcpServer] acceptThread done" << std::endl;
     }
 
     if (sslCtx_) {
@@ -106,7 +103,7 @@ void TcpServer::acceptLoop() {
 
         if (clientFd < 0) {
             if (!running_)  break;  // shutdown() 호출 시 정상 종료
-            std::cerr << "[TcpServer] accept() failed" << std::endl;    // 로그 남기기 시간찍어서,
+            LOG_ERROR("[TcpServer] accept() failed");
             continue;
         }
         // 블랙리스트 체크
@@ -135,14 +132,13 @@ void TcpServer::acceptLoop() {
         continue;
         }
 
-        std::cout << "[TcpServer] TLS Client connected, CID=" << *cid << std::endl;
+        LOG_INFO("[TcpServer] Client connected, CID=" + cidToHex(*cid) + " IP=" + clientIp);
 
         auto transport = std::make_unique<TlsTransport>(ssl, clientFd, *cid);
         SessionManager::getInstance().addSession(*cid, clientIp, std::move(transport));
 
-        std::cout << "[TcpServer] Session count=" << SessionManager::getInstance().getSessionCount() << std::endl;
+        LOG_INFO("[TcpServer] Session count=" + std::to_string(SessionManager::getInstance().getSessionCount()));
     }
-    std::cout << "[TcpServer] acceptLoop exit" << std::endl;
 }
 
 // Req-B-20 추가: 클라이언트 접속 후, SID:0X30 Register CID 등록 패킷 받아옴

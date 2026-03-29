@@ -1,5 +1,6 @@
 #include "transport/TlsTransport.hpp"
 #include "core/SessionManager.hpp"
+#include "util/Logger.hpp"
 #include <sys/socket.h>
 #include <unistd.h>
 #include <iostream>
@@ -96,7 +97,6 @@ void TlsTransport::rxLoop() {
     }
 
     SessionManager::getInstance().removeSession(cid);
-    std::cout << "[TlsTransport] rxLoop exited, CID=" << cid << std::endl;
 }
 
 void TlsTransport::txLoop() {
@@ -118,7 +118,7 @@ void TlsTransport::txLoop() {
                                         data.data() + totalSent,
                                         data.size() - totalSent);
                     if (sent <= 0) {
-                        std::cerr << "[TlsTransport] SSL_write failed, CID=" << cid_ << std::endl;
+                        LOG_ERROR("[TlsTransport] SSL_write failed, CID=" + cidToHex(cid_));
                         break;
                     }
                     totalSent += sent;
@@ -127,5 +127,4 @@ void TlsTransport::txLoop() {
             lock.lock();
         }
     }
-    std::cout << "[TlsTransport] txLoop exit, CID=" << cid_ << std::endl;
 }

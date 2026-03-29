@@ -1,6 +1,6 @@
 #include <core/SessionManager.hpp>
 #include <core/Types.hpp>
-#include <iostream>
+#include <util/Logger.hpp>
 
 std::set<std::string> SessionManager::blacklist_;
 std::mutex SessionManager::blacklistMtx_;
@@ -38,7 +38,7 @@ void SessionManager::addSession(uint16_t cid, const std::string& ip, std::unique
 void SessionManager::removeSession(uint16_t cid) {
     std::lock_guard<std::mutex> lock(mtx_);
     sessions_.erase(cid);
-    std::cout << "[SessionManager] Session removed, CID=" << cid << " count=" << sessions_.size() << std::endl;
+    LOG_INFO("[SessionManager] Session removed, CID=" + cidToHex(cid));
 }
 
 void SessionManager::onFrameArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& frame) {
