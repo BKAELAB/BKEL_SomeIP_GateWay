@@ -36,21 +36,3 @@ target_link_libraries(bkel_gateway
     crypto
     nlohmann_json::nlohmann_json
 )
-
-# 테스트 클라이언트
-add_executable(test_client
-    src/test_client.cpp
-    src/protocol/PacketParser.cpp
-    src/protocol/PacketEncoder.cpp
-    src/core/SessionManager.cpp
-    src/core/Session.cpp
-    src/transport/TcpTransport.cpp
-)
-
-target_include_directories(test_client PRIVATE include)
-
-target_link_libraries(test_client
-    pthread
-    ssl
-    crypto
-)
