@@ -1,3 +1,5 @@
+import os
+import ssl
 import socket
 import threading
 from queue import Queue
@@ -19,6 +21,15 @@ class TcpClient:
 
     def connect(self) -> None:
         self.sock = socket.create_connection((self.host, self.port), timeout=3.0)
+
+        # TLS
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        ctx.load_verify_locations(os.path.join(BASE_DIR, "config", "server.crt"))
+        ctx.check_hostname = False
+
+        self.sock = ctx.wrap_socket(self.sock)
+
         self.sock.settimeout(0.5)
         self.running = True
         self.reader = threading.Thread(target=self._reader_loop, daemon=True)
