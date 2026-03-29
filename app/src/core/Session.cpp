@@ -1,10 +1,9 @@
 #include <core/Session.hpp>
-#include <transport/TcpTransport.hpp>
 #include <protocol/PacketEncoder.hpp>
 #include <utility>
 #include <iostream>
 #include <queue>
-Session::Session(uint16_t cid, std::string ip, std::unique_ptr<TcpTransport> transport)
+Session::Session(uint16_t cid, std::string ip, std::unique_ptr<ITransport> transport)
     : cid_(cid),
       ipAddress_(std::move(ip)),
       maliciousScore_(0),

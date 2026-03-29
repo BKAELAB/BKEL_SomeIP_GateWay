@@ -27,7 +27,7 @@ std::shared_ptr<Session> SessionManager::findSessionNoLock_(uint16_t cid) {
     return it->second;
 }
 
-void SessionManager::addSession(uint16_t cid, const std::string& ip, std::unique_ptr<TcpTransport> transport) {
+void SessionManager::addSession(uint16_t cid, const std::string& ip, std::unique_ptr<ITransport> transport) {
     std::lock_guard<std::mutex> lock(mtx_);
     if (sessions_.find(cid) == sessions_.end()) {
         sessions_[cid] = std::make_shared<Session>(cid, ip, std::move(transport));
