@@ -1,6 +1,8 @@
 #include "transport/TcpServer.hpp"
 #include "core/SessionManager.hpp"
+#include "transport/TlsTransport.hpp"
 #include "util/Config.hpp"
+#include <openssl/ssl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -9,7 +11,20 @@
 #include <iostream>
 
 TcpServer::TcpServer()
-    : ip_(""), port_(0), serverFd_(-1), running_(false) {}
+    : ip_(""), port_(0), serverFd_(-1), running_(false) 
+{
+    SSL_CTX* ctx = SSL_CTX_new(TLS_server_method());
+    if (!ctx) throw std::runtime_error("SSL_CTX_new() failed");
+
+    if (SSL_CTX_use_certificate_file(ctx, "config/server.crt", SSL_FILETYPE_PEM) <= 0)
+        throw std::runtime_error("Failed to load server.crt");
+
+    if (SSL_CTX_use_PrivateKey_file(ctx, "config/server.key", SSL_FILETYPE_PEM) <= 0)
+        throw std::runtime_error("Failed to load server.key");
+
+    sslCtx_ = ctx;
+}
+
 
 TcpServer::~TcpServer() {
     if (running_) {  // 아직 안 끝났을 때만 shutdown 호출
@@ -69,6 +84,11 @@ void TcpServer::shutdown() {
         acceptThread_.join();
         std::cout << "[TcpServer] acceptThread done" << std::endl;
     }
+
+    if (sslCtx_) {
+        SSL_CTX_free(sslCtx_);
+        sslCtx_ = nullptr;
+    }
 }
 
 void TcpServer::acceptLoop() {
@@ -93,30 +113,32 @@ void TcpServer::acceptLoop() {
         if (SessionManager::getInstance().isBanned(clientIp)) {
             std::cerr << "[Security] Connection denied. BANNED IP: " << clientIp << std::endl << std::flush;
             ::close(clientFd);
-            continue; 
-        }
-
-        // 5초 안에 CID 패킷 안 보내면 연결 끊음
-        struct timeval tv { .tv_sec = 5, .tv_usec = 0 };
-        setsockopt(clientFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-
-        // Req-B-20: 연결 시 CID를 클라이언트로부터 수신
-        auto cid = receivedCid(clientFd);
-
-        if (!cid) {     // nullopt 체크, (이후 cid 역참조 안전)
-            ::close(clientFd);
             continue;
         }
 
-        // 타임아웃 해제 - TcpTransport rxLoop의 recv()에 영향 주지 않도록
-        struct timeval noTimeout { .tv_sec = 0, .tv_usec = 0 };
-        setsockopt(clientFd, SOL_SOCKET, SO_RCVTIMEO, &noTimeout, sizeof(noTimeout));
-        std::cout << "[TcpServer] Client connection, CID=" << *cid << std::endl;
+        SSL* ssl = SSL_new(sslCtx_);
+        SSL_set_fd(ssl, clientFd);
 
-        // Req-B-23: TCP 연결 시 Session 생성
-        auto transport = std::make_unique<TcpTransport>(clientFd, *cid);                  // transport 생성
-        transport->setIpAddress(clientIp);
-        SessionManager::getInstance().addSession(*cid, clientIp, std::move(transport));   // Session 생성
+        if (SSL_accept(ssl) <= 0) {
+        std::cerr << "[TcpServer] SSL_accept failed" << std::endl;
+        SSL_free(ssl);
+        ::close(clientFd);
+        continue;
+        }
+
+        auto cid = receivedCidTls(ssl);
+
+        if (!cid) {
+        SSL_shutdown(ssl);
+        SSL_free(ssl);
+        ::close(clientFd);
+        continue;
+        }
+
+        std::cout << "[TcpServer] TLS Client connected, CID=" << *cid << std::endl;
+
+        auto transport = std::make_unique<TlsTransport>(ssl, clientFd, *cid);
+        SessionManager::getInstance().addSession(*cid, clientIp, std::move(transport));
 
         std::cout << "[TcpServer] Session count=" << SessionManager::getInstance().getSessionCount() << std::endl;
     }
@@ -165,6 +187,30 @@ std::optional<uint16_t> TcpServer::receivedCid(int clientFd) {
     }
 
     uint16_t cid = raw_cid >> 4;
+
+    return cid;
+}
+
+std::optional<uint16_t> TcpServer::receivedCidTls(SSL* ssl) {
+    uint8_t sof = 0;
+    if (SSL_read(ssl, &sof, 1) != 1) return std::nullopt;
+    if (sof != SOF_DATA_VALUE) return std::nullopt;
+
+    BKEL_Data_Frame_Header hdr{};
+    if (SSL_read(ssl, &hdr, BKEL_HDR_SIZE) != BKEL_HDR_SIZE) return std::nullopt;
+    if (hdr.sid != 0x30) return std::nullopt;
+
+    if (hdr.dlc > 0) {
+        std::vector<uint8_t> dummy(hdr.dlc);
+        if (SSL_read(ssl, dummy.data(), hdr.dlc) != hdr.dlc) return std::nullopt;
+    }
+
+    uint16_t raw_cid = 0;
+    if (SSL_read(ssl, &raw_cid, BKEL_CID_SIZE) != BKEL_CID_SIZE) return std::nullopt;
+    uint16_t cid = raw_cid >> 4;
+
+    uint8_t crc = 0;
+    if (SSL_read(ssl, &crc, BKEL_CRC_SIZE) != BKEL_CRC_SIZE) return std::nullopt;
 
     return cid;
 }
