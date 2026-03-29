@@ -22,7 +22,7 @@ add_executable(bkel_gateway
     src/transport/UartTransport.cpp
     src/transport/TcpTransport.cpp
     src/transport/TcpServer.cpp
-    # src/transport/TlsTransport.cpp
+    src/transport/TlsTransport.cpp
     src/protocol/PacketParser.cpp
     src/protocol/PacketEncoder.cpp
     src/util/Config.cpp
@@ -51,4 +51,6 @@ target_include_directories(test_client PRIVATE include)
 
 target_link_libraries(test_client
     pthread
+    ssl
+    crypto
 )
