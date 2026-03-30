@@ -22,10 +22,11 @@ add_executable(bkel_gateway
     src/transport/UartTransport.cpp
     src/transport/TcpTransport.cpp
     src/transport/TcpServer.cpp
-    # src/transport/TlsTransport.cpp
+    src/transport/TlsTransport.cpp
     src/protocol/PacketParser.cpp
     src/protocol/PacketEncoder.cpp
     src/util/Config.cpp
+    src/util/Logger.cpp
 )
 
 target_include_directories(bkel_gateway PRIVATE include)
@@ -35,20 +36,4 @@ target_link_libraries(bkel_gateway
     ssl
     crypto
     nlohmann_json::nlohmann_json
-)
-
-# 테스트 클라이언트
-add_executable(test_client
-    src/test_client.cpp
-    src/protocol/PacketParser.cpp
-    src/protocol/PacketEncoder.cpp
-    src/core/SessionManager.cpp
-    src/core/Session.cpp
-    src/transport/TcpTransport.cpp
-)
-
-target_include_directories(test_client PRIVATE include)
-
-target_link_libraries(test_client
-    pthread
 )

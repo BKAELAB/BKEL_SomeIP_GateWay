@@ -1,5 +1,6 @@
 #include "transport/TcpTransport.hpp"
 #include "core/SessionManager.hpp"
+#include "util/Logger.hpp"
 #include <sys/socket.h>
 #include <unistd.h>
 #include <iostream>
@@ -95,7 +96,7 @@ void TcpTransport::rxLoop() {
 
         // 3. Payload 수신
         if (hdr.dlc > BKEL_MAX_PAYLOAD) {
-            std::cerr << "[TcpTransport] invalid dlc=" << hdr.dlc << ", CID=" << cid << std::endl;
+            LOG_ERROR("[TcpTransport] invalid dlc=" + std::to_string(hdr.dlc) + ", CID=" + cidToHex(cid));
             break;
         }
         std::vector<uint8_t> payload(hdr.dlc);
@@ -127,8 +128,6 @@ void TcpTransport::rxLoop() {
     // 주의: removeSession 이후 Session이 소멸되면 this도 파괴될 수 있음
     // cid_ 등 멤버 접근 금지, 로컬 변수 cid 사용
     ::close(clientFd_); // 소켓닫기
-    std::cout << "[TcpTransport] rxLoop exited, CID=" << cid << std::endl;
-    
 }
 
 void TcpTransport::txLoop() {
@@ -155,7 +154,7 @@ void TcpTransport::txLoop() {
                                         0);
                     if (sent < 0) {
                         // 에러 처리
-                        std::cerr << "[TcpTransport] send failed, CID=" << cid_ << std::endl;
+                        LOG_ERROR("[TcpTransport] send failed, CID=" + cidToHex(cid_));
                         // removeSession or disconnect 처리
                         break;
                     } 
@@ -165,5 +164,4 @@ void TcpTransport::txLoop() {
             lock.lock();
         }
     }
-    std::cout << "[TcpTransport] txLoop exit, CID=" << cid_ << std::endl;
 }

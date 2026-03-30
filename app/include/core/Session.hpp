@@ -5,10 +5,11 @@
 #include <memory>
 #include <queue>
 #include <protocol/Packet.hpp> // BKEL_Frame
-#include <transport/TcpTransport.hpp> // transport
+#include <mutex>
+#include <transport/ITransport.hpp>
 class Session {
 public:
-    Session(uint16_t cid, std::string ip, std::unique_ptr<TcpTransport> transport);  // fd 가지고 있기 위해서 TcpTransport 객체 소유
+    Session(uint16_t cid, std::string ip, std::unique_ptr<ITransport> transport);  // fd 가지고 있기 위해서 TcpTransport 객체 소유
     
     //rx, tx 루프 시작
     void startTransport();
@@ -44,7 +45,7 @@ private:
     uint16_t cid_;
     std::string ipAddress_;
     std::queue<uint8_t> requestedSidQueue_;
-    std::unique_ptr<TcpTransport> transport_; 
+    std::unique_ptr<ITransport> transport_; 
 
     std::vector<BKEL_Frame> toMcuQueue_;     // MCU로 보낼 패킷 목록
     mutable std::mutex mtx_;

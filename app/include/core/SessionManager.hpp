@@ -6,13 +6,14 @@
 #include <cstdint>
 #include <set>
 #include "Session.hpp"
+#include "transport/ITransport.hpp"
 
 class SessionManager {
 public:
     static SessionManager& getInstance();
 
     // 수명관리
-    void addSession(uint16_t cid, const std::string& ip, std::unique_ptr<TcpTransport> transport);
+    void addSession(uint16_t cid, const std::string& ip, std::unique_ptr<ITransport> transport);
     void removeSession(uint16_t cid);
 
     // 통신

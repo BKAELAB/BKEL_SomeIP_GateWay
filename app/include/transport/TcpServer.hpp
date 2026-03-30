@@ -8,6 +8,7 @@
 #include <functional>
 #include <optional>
 #include <set>
+#include <openssl/ssl.h>
 #include "transport/TcpTransport.hpp"
 
 // Req-B-20: TCP 연결 수락 및 TcpTransport 생성
@@ -39,6 +40,7 @@ private:
     std::atomic<bool> running_;
     std::thread acceptThread_;
 
-    int pendingFd_;         // accept 후 recv 대기 중인 fd
-    std::mutex pendingMutex_;
+    //TLS
+    std::optional<uint16_t> receivedCidTls(SSL* ssl);
+    SSL_CTX* sslCtx_;
 };

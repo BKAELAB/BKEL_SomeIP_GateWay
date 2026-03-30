@@ -9,8 +9,9 @@
 #include <condition_variable>
 #include <functional>
 #include <protocol/Packet.hpp>
+#include "transport/ITransport.hpp"
 
-class TcpTransport {
+class TcpTransport : public ITransport {
 public:
     TcpTransport(int clientFd, uint16_t cid);
     ~TcpTransport();

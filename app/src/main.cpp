@@ -1,7 +1,10 @@
 #include "main.h"
 
 int main(int argc, char* argv[])
-{   
+{
+    /* Logger 초기화 */
+    Logger::getInstance().open("logs/gateway.log");
+
     /* Main Function */
     Engine::Get().Run();
     
