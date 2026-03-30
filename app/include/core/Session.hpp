@@ -48,7 +48,6 @@ private:
 
     std::vector<BKEL_Frame> toMcuQueue_;     // MCU로 보낼 패킷 목록
     mutable std::mutex mtx_;
-
-    int maliciousScore_;
+    
     bool isBlocked_;
 };
