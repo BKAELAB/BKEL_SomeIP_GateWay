@@ -23,6 +23,7 @@ class TcpClient:
         self.sock = socket.create_connection((self.host, self.port), timeout=3.0)
 
         # TLS
+        # clientapp/config/ 경로에 server.crt 파일 추가 후 실행
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         ctx.load_verify_locations(os.path.join(BASE_DIR, "config", "server.crt"))
