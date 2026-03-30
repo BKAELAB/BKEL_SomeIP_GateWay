@@ -1,5 +1,6 @@
 #include "transport/TcpTransport.hpp"
 #include "core/SessionManager.hpp"
+#include "util/Logger.hpp"
 #include <sys/socket.h>
 #include <unistd.h>
 #include <iostream>
@@ -58,10 +59,36 @@ void TcpTransport::rxLoop() {
     // Req-B-22: 백그라운드에서 실시간 패킷 수신
     // MSG_WAITALL로 각 필드를 순서대로 읽어 BKEL_Frame 조립 후 SessionManager에 직접 전달
     const uint16_t cid = cid_;  // removeSession 후 this가 파괴될 수 있으므로 미리 복사
+    lastResetTime_ = std::chrono::steady_clock::now();
+    packetCountInSecond_ = 0;
+
     while (running_) {
         // 1. SOF 수신
         uint8_t sof;
         if (recv(clientFd_, &sof, BKEL_SOF_SIZE, MSG_WAITALL) != BKEL_SOF_SIZE) break;
+
+
+        // 보호 로직
+        auto now = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastResetTime_).count();
+
+        // 1초(1000ms)가 지났는지 확인
+        if (duration >= 5000) {
+            // 1초가 지났으므로 카운트 리셋 및 기준 시간 갱신
+            packetCountInSecond_ = 0;
+            lastResetTime_ = now;
+        }
+
+        // 패킷 카운트 증가
+        packetCountInSecond_++;
+
+        if (packetCountInSecond_ > 100) {
+            std::cerr << "\n[Security] DoS Detected! Banning IP: " << ipAddress_ 
+                      << " (Count: " << packetCountInSecond_ << ")" << std::endl << std::flush;
+            
+            SessionManager::getInstance().addBlacklist(ipAddress_);
+            break; // 루프 탈출 -> 세션 종료
+        }
 
         // 2. Header 수신
         BKEL_Data_Frame_Header hdr{};
@@ -69,7 +96,7 @@ void TcpTransport::rxLoop() {
 
         // 3. Payload 수신
         if (hdr.dlc > BKEL_MAX_PAYLOAD) {
-            std::cerr << "[TcpTransport] invalid dlc=" << hdr.dlc << ", CID=" << cid << std::endl;
+            LOG_ERROR("[TcpTransport] invalid dlc=" + std::to_string(hdr.dlc) + ", CID=" + cidToHex(cid));
             break;
         }
         std::vector<uint8_t> payload(hdr.dlc);
@@ -100,7 +127,7 @@ void TcpTransport::rxLoop() {
     SessionManager::getInstance().removeSession(cid);
     // 주의: removeSession 이후 Session이 소멸되면 this도 파괴될 수 있음
     // cid_ 등 멤버 접근 금지, 로컬 변수 cid 사용
-    std::cout << "[TcpTransport] rxLoop exited, CID=" << cid << std::endl;
+    ::close(clientFd_); // 소켓닫기
 }
 
 void TcpTransport::txLoop() {
@@ -127,7 +154,7 @@ void TcpTransport::txLoop() {
                                         0);
                     if (sent < 0) {
                         // 에러 처리
-                        std::cerr << "[TcpTransport] send failed, CID=" << cid_ << std::endl;
+                        LOG_ERROR("[TcpTransport] send failed, CID=" + cidToHex(cid_));
                         // removeSession or disconnect 처리
                         break;
                     } 
@@ -137,5 +164,4 @@ void TcpTransport::txLoop() {
             lock.lock();
         }
     }
-    std::cout << "[TcpTransport] txLoop exit, CID=" << cid_ << std::endl;
 }

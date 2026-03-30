@@ -1,10 +1,24 @@
 #include <core/SessionManager.hpp>
 #include <core/Types.hpp>
-#include <iostream>
+#include <util/Logger.hpp>
+
+std::set<std::string> SessionManager::blacklist_;
+std::mutex SessionManager::blacklistMtx_;
 
 SessionManager& SessionManager::getInstance() {
     static SessionManager instance;
     return instance;
+}
+
+void SessionManager::addBlacklist(const std::string& ip) {
+    std::lock_guard<std::mutex> lock(blacklistMtx_);
+    blacklist_.insert(ip);
+    std::cout << "[Security] IP added to blacklist: " << ip << " (Total: " << blacklist_.size() << ")" << std::endl;
+}
+
+bool SessionManager::isBanned(const std::string& ip) {
+    std::lock_guard<std::mutex> lock(blacklistMtx_);
+    return blacklist_.find(ip) != blacklist_.end();
 }
 
 std::shared_ptr<Session> SessionManager::findSessionNoLock_(uint16_t cid) {
@@ -13,7 +27,7 @@ std::shared_ptr<Session> SessionManager::findSessionNoLock_(uint16_t cid) {
     return it->second;
 }
 
-void SessionManager::addSession(uint16_t cid, const std::string& ip, std::unique_ptr<TcpTransport> transport) {
+void SessionManager::addSession(uint16_t cid, const std::string& ip, std::unique_ptr<ITransport> transport) {
     std::lock_guard<std::mutex> lock(mtx_);
     if (sessions_.find(cid) == sessions_.end()) {
         sessions_[cid] = std::make_shared<Session>(cid, ip, std::move(transport));
@@ -24,7 +38,7 @@ void SessionManager::addSession(uint16_t cid, const std::string& ip, std::unique
 void SessionManager::removeSession(uint16_t cid) {
     std::lock_guard<std::mutex> lock(mtx_);
     sessions_.erase(cid);
-    std::cout << "[SessionManager] Session removed, CID=" << cid << " count=" << sessions_.size() << std::endl;
+    LOG_INFO("[SessionManager] Session removed, CID=" + cidToHex(cid));
 }
 
 void SessionManager::onFrameArrived(uint16_t cid, const std::string& ip, const BKEL_Frame& frame) {

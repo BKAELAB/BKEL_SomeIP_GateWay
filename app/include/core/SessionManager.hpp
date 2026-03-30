@@ -4,14 +4,16 @@
 #include <mutex>
 #include <string>
 #include <cstdint>
+#include <set>
 #include "Session.hpp"
+#include "transport/ITransport.hpp"
 
 class SessionManager {
 public:
     static SessionManager& getInstance();
 
     // 수명관리
-    void addSession(uint16_t cid, const std::string& ip, std::unique_ptr<TcpTransport> transport);
+    void addSession(uint16_t cid, const std::string& ip, std::unique_ptr<ITransport> transport);
     void removeSession(uint16_t cid);
 
     // 통신
@@ -44,6 +46,9 @@ public:
     // std::shared_ptr<Session> getSession(uint16_t cid);
     // void clearSessions();
 
+    static void addBlacklist(const std::string& ip);
+    static bool isBanned(const std::string& ip);
+
 private:
     SessionManager() = default;
     ~SessionManager() = default;
@@ -51,10 +56,11 @@ private:
     SessionManager(const SessionManager&) = delete;
     SessionManager& operator=(const SessionManager&) = delete;
 
-private:
     std::shared_ptr<Session> findSessionNoLock_(uint16_t cid);
 
-private:
     std::map<uint16_t, std::shared_ptr<Session>> sessions_;
     mutable std::mutex mtx_;
+
+    static std::set<std::string> blacklist_; // 차단된 IP 저장소
+    static std::mutex blacklistMtx_;
 };
