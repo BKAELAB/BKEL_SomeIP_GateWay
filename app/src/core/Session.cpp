@@ -7,7 +7,6 @@
 Session::Session(uint16_t cid, std::string ip, std::unique_ptr<TcpTransport> transport)
     : cid_(cid),
       ipAddress_(std::move(ip)),
-      maliciousScore_(0),
       isBlocked_(false),
       transport_(std::move(transport)) {}
 

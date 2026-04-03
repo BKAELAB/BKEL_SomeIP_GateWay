@@ -66,14 +66,13 @@ void TcpTransport::rxLoop() {
         uint8_t sof;
         if (recv(clientFd_, &sof, BKEL_SOF_SIZE, MSG_WAITALL) != BKEL_SOF_SIZE) break;
 
-
         // 보호 로직
         auto now = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastResetTime_).count();
 
-        // 1초(1000ms)가 지났는지 확인
-        if (duration >= 5000) {
-            // 1초가 지났으므로 카운트 리셋 및 기준 시간 갱신
+        // 2초(1000ms)가 지났는지 확인
+        if (duration >= 2000) {
+            // 2초가 지났으므로 카운트 리셋 및 기준 시간 갱신
             packetCountInSecond_ = 0;
             lastResetTime_ = now;
         }
